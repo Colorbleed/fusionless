@@ -1,6 +1,14 @@
 """
     Contains the main `PyNode` base class.
     And for now also all its derived classes.
+
+    Note that this package is an early release (consider it pre-alpha public development).
+    Here's a community-built list of Fusion's built-in classes:
+    http://www.steakunderwater.com/VFXPedia/96.0.243.189/index8c76.html?title=Eyeon:Script/Reference/Applications/Fusion/Classes
+
+    Most of the methods and class types available in Fusion will still have to be added and implemented in this
+    `fusionscript` package.
+
 """
 
 class PyNode(object):
@@ -22,6 +30,12 @@ class PyNode(object):
             newcls = Comp
         elif data_type.startswith("TOOL"):
             newcls = Tool
+        elif data_type.startswith("INP"):
+            newcls = Input
+        elif data_type.startswith("OUT"):
+            newcls = Output
+        elif data_type.startswith("VIEW"):
+            newcls = Flow
 
         # Ensure we convert to a type preferred by the user
         # eg. currently Tool() would come out as Comp() since no arguments are provided.
@@ -89,13 +103,16 @@ class Tool(PyNode):
         id = tool._reference.FindMainInput(1).ID
         tool._reference[id] = self._reference.FindMainOutput(1)
 
+    def attr(self, id):
+        return Attribute(self._reference[id])
+
     def inputs(self):
         """ Return all Inputs of this Tools """
-        raise NotImplementedError()
+        return [Input(x) for x in self._reference.GetInputList().values()]
 
     def outputs(self):
         """ Return all Outputs of this Tools """
-        raise NotImplementedError()
+        return [Output(x) for x in self._reference.GetOutputList().values()]
 
     def connections(self, inputs=True, outputs=True):
         """ Return all Connections of Inputs and Outputs of this Tools """
@@ -111,21 +128,35 @@ class Tool(PyNode):
     def clear_name(self):
         self._reference.SetAttrs({'TOOLB_NameSet': False, 'TOOLS_Name': ''})
 
+    def delete(self):
+        self._reference.Delete()
+
+    def refresh(self):
+        self._reference.Refresh()
+
+    def parent(self):
+        """ Return the parent Group this Tool belongs to, if any. """
+        return self._reference.ParentTool
+
+    def comp(self):
+        """ Return the Comp this Tool belongs to. """
+        return Comp(self._reference.Composition)
+
     def set_text_color(self, color):
         """ Sets the Tool's text color.
 
-        For example:
-            >> tool.set_text_color({'R':0.5, 'G':0.1, 'B': 0.0})
-            >> tool.set_text_color(None)
+        Example
+            >>> tool.set_text_color({'R':0.5, 'G':0.1, 'B': 0.0})
+            >>> tool.set_text_color(None)
         """
         self._reference.TextColor = color
 
     def set_tile_color(self, color):
         """ Sets the Tool's tile color.
 
-        For example:
-            >> tool.set_tile_color({'R':0.5, 'G':0.1, 'B': 0.0})
-            >> tool.set_tile_color(None)
+        Example
+            >>> tool.set_tile_color({'R':0.5, 'G':0.1, 'B': 0.0})
+            >>> tool.set_tile_color(None)   # reset
         """
         self._reference.TileColor = color
 
@@ -135,13 +166,45 @@ class Flow(PyNode):
 
 
 class Attribute(PyNode):
+    # GetTool               Get Tool this Attribute belongs to
+
+    def get(self, time=None):
+        """ Get the value of this Attribute.
+
+            If time is provided the value is evaluated at that specific time, otherwise current time is used.
+        """
+        if time is None:
+            time = self.tool().comp().get_current_time()
+
+        return self._reference[time]
+
     def disconnect(self):
         pass
 
+    def tool(self):
+        """ Return the Tool this Attribute belongs to """
+        return Tool(self._reference.GetTool())
+
 
 class Input(Attribute):
+    # GetExpression
+    # SetExpression
+    # WindowControlsVisible
+    # HideWindowControls
+    # ViewControlsVisible
+    # HideViewControls
+    # GetConnectedOutput
+    # GetKeyFrames
+    # ConnectTo
+    # input[time] == value
     pass
 
 
 class Output(Attribute):
+    # GetValue	            Retrieve the Output's value at the given time
+    # GetValueMemBlock	    Retrieve the Output's value as a MemBlock
+    # EnableDiskCache	    Controls disk-based caching
+    # ClearDiskCache	    Clears frames from the disk cache
+    # ShowDiskCacheDlg	    Displays the Cache-To-Disk dialog for user interaction
+    # GetConnectedInputs	Returns a table of Inputs connected to this Output
     pass
