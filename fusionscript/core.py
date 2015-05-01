@@ -84,6 +84,13 @@ class Comp(PyNode):
             tool._reference.SetAttrs(attrs)
         return tool
 
+    def copy(self, tools):
+        return self._reference.Copy([tool._reference for tool in tools])
+
+    def paste(self, values=None):
+        args = tuple() if values is None else (values,)
+        return self._reference.Paste(*args)
+
     def __repr__(self):
         filename = self._reference.GetAttrs()['COMPS_FileName']
         return '{0}("{1}")'.format(self.__class__.__name__, filename)
@@ -98,7 +105,7 @@ class Tool(PyNode):
         flow = comp.CurrentFrame.FlowView
         flow.SetPos(self._reference, *pos)
 
-    def connect_to(self, tool, from_index=1, to_index=1):
+    def connect_main(self, tool, from_index=1, to_index=1):
         assert isinstance(tool, Tool)
         id = tool._reference.FindMainInput(1).ID
         tool._reference[id] = self._reference.FindMainOutput(1)
@@ -138,6 +145,31 @@ class Tool(PyNode):
         """ Return the parent Group this Tool belongs to, if any. """
         return self._reference.ParentTool
 
+    def save_settings(self, path=None):
+        """ Saves the tool's settings to a dict, or to a .setting file specified by the path argument.
+
+        :param path: A valid path to the location where a .setting file will be saved.
+        :type path: str
+        :return:
+            If a path is given, the tool's settings will be saved to that file, and a boolean is returned to indicate success.
+            If no path is given, SaveSettings() will return a table of the tool's settings instead.
+        """
+        args = tuple() if path is None else (path,)
+        return self._reference.SaveSettings(*args)
+
+    def load_settings(self, settings):
+        """ The LoadSettings function is used to load .setting files or tables into a tool.
+
+        This is potentially useful for any number of applications, such as loading curve data into fusion, for which
+        there is currently no simple way to script interactively in Fusion. Beyond that, it could possibly be used to
+        sync updates to tools over project management systems.
+
+        :param settings: The path to a valid .setting file or a settings dictionary.
+                         A valid table of settings, such as produced by SaveSettings() or read from a .setting file.
+        :return: None
+        """
+        self._reference.LoadSettings(settings)
+
     def comp(self):
         """ Return the Comp this Tool belongs to. """
         return Comp(self._reference.Composition)
@@ -162,7 +194,54 @@ class Tool(PyNode):
 
 
 class Flow(PyNode):
-    pass
+    def set_pos(self, tool, pos):
+        """ Reposition the given Tool to the position in the FlowView.
+
+        :param tool: This argument should contain the tool that will be repositioned in the FlowView.
+        :type tool: Tool
+        :param pos: Numeric values specifying the x and y co-ordinates for the tool in the FlowView.
+        :type pos: list(float, float)
+        """
+
+        if not isinstance(tool, Tool):
+            tool = Tool(tool)
+
+        self._reference.SetPos(tool._reference, pos[0], pos[1])
+
+    def get_pos(self, tool):
+        """ This function will return the X and Y position of a tool's tile in the FlowView.
+
+        :param tool: This argument should contain the tool object the function will return the position of.
+        :type tool: Tool
+        :return: This function returns two numeric values containing the X and Y co-ordinates of the tool.
+        :rtype: list(float, float)
+        """
+        if not isinstance(tool, Tool):
+            tool = Tool(tool)
+
+        return self._reference.GetPos(tool._reference)
+
+    def get_scale(self):
+        """ Return the current scale of the FlowView.
+
+        :return: This function returns a numeric value indicating the current scale of the FlowView.
+        :rtype: float
+        """
+        return self._reference.GetScale()
+
+    def set_scale(self, scale):
+        """ Rescales the FlowView to the amount specified.
+
+        A value of 1 for the scale argument would set the FlowView to 100%.
+        While a value of 0.1 would set it to 10% of the default scale.
+
+        :type scale: float
+        """
+        return self._reference.SetScale(scale)
+
+    def frame_all(self):
+        """ This function will rescale and reposition the FlowView to contain all tools. """
+        self._reference.FrameAll()
 
 
 class Attribute(PyNode):
@@ -197,7 +276,38 @@ class Input(Attribute):
     # GetKeyFrames
     # ConnectTo
     # input[time] == value
-    pass
+    def connect_output(self, output):
+        if not isinstance(output, Output):
+            output = Output(output)
+
+        self._reference.ConnectTo
+
+    def connection(self):
+        other = self._reference.GetConnectedOutput()
+        if other:
+            return Output(other)
+
+    def get_expression(self):
+        """ This function returns the expression string shown within the Input's Expression field.
+
+        :return: Returns the simple expression string from a given input if any, or an empty string if not.
+        :rtype: str
+        """
+        return self._reference.GetExpression()
+
+    def set_expression(self, expression):
+        """ This function set the Expression field for the Input to the given string.
+
+        :param expression: A simple expression string.
+        :type expression: str
+        """
+        self._reference.SetExpression(expression)
+
+    def get_keyframes(self):
+        return self._reference.GetKeyFrames().values()
+
+    def is_connected(self):
+        return bool(self._reference.GetConnectedOutput())
 
 
 class Output(Attribute):
@@ -207,4 +317,8 @@ class Output(Attribute):
     # ClearDiskCache	    Clears frames from the disk cache
     # ShowDiskCacheDlg	    Displays the Cache-To-Disk dialog for user interaction
     # GetConnectedInputs	Returns a table of Inputs connected to this Output
-    pass
+    def connections(self):
+        return [Input(x) for x in self._reference.GetConnectedInputs().values()]
+
+    def is_connected(self):
+        return any(self._reference.GetConnectedInputs().values())
