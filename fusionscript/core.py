@@ -21,6 +21,8 @@ class PyNode(object):
             reference = comp
 
         # Acquire an attribute to check for type (start prefix)
+        # TODO: Check if could be optimized (micro-optimization) by getting something that returns less values or \
+        #       might already be retrievable from the PyRemoteObject.
         attrs = reference.GetAttrs()
         data_type = next(iter(attrs))
 
@@ -54,6 +56,22 @@ class PyNode(object):
 
     def set_attr(self, key, value):
         self._reference.SetAttrs({key: value})
+
+    def name(self):
+        """ The internal Fusion Name as string of the node this PyNode references.
+
+        :return: A string value containing the internal Name of this node.
+        :rtype: str
+        """
+        return self._reference.Name
+
+    def id(self):
+        """ The internal Fusion ID as string of the node this PyNode references.
+
+        :return: A string value containing the internal ID of this node.
+        :rtype: str
+        """
+        return self._reference.ID
 
     def __getattr__(self, attr):
         return getattr(self._reference, attr)
@@ -97,20 +115,46 @@ class Comp(PyNode):
 
 
 class Tool(PyNode):
+    """ A Tool is a single operator/node in your composition.
+
+    You can use this object to perform changes to a single tool (or make connections with another) or query information.
+    For example renaming, deleting, connecting and retrieving its inputs/outputs.
+    """
+
     def get_pos(self):
+        """ This function will return the X and Y position this tool in the FlowView.
+
+        :return: This function returns two numeric values containing the X and Y co-ordinates of the tool.
+        :rtype: list(float, float)
+        """
         flow = comp.CurrentFrame.FlowView
         return flow.GetPosTable(self._reference).values()
 
     def set_pos(self, pos):
+        """ Reposition this tool.
+
+        :param pos: Numeric values specifying the x and y co-ordinates for the tool in the FlowView.
+        :type pos: list(float, float)
+        """
         flow = comp.CurrentFrame.FlowView
         flow.SetPos(self._reference, *pos)
 
     def connect_main(self, tool, from_index=1, to_index=1):
-        assert isinstance(tool, Tool)
+        """ Helper function that quickly connects main outputs to another tool's main inputs.
+
+        :param tool: The other tool to connect to.
+        :param from_index: The index of the main output on thjis tool. (Indices start at 1)
+        :param to_index:  The index of the main input on the other tool. (Indices start at 1)
+        """
+        if not isinstance(tool, Tool):
+            tool = Tool(tool)
+
         id = tool._reference.FindMainInput(1).ID
-        tool._reference[id] = self._reference.FindMainOutput(1)
+        tool._reference[id] = self._reference.FindMainOutput(1)     # connect
 
     def attr(self, id):
+        # TODO: Fusion differentiaties between Outputs and Inputs so a 'global' attr function is confusing.
+        #       Maybe opt for self.input(id) and self.output(id) to retrieve the respective types.
         return Attribute(self._reference[id])
 
     def inputs(self):
@@ -136,10 +180,25 @@ class Tool(PyNode):
         self._reference.SetAttrs({'TOOLB_NameSet': False, 'TOOLS_Name': ''})
 
     def delete(self):
+        """ Removes the tool from the composition.
+
+        Note:
+        This also releases the handle to the Fusion Tool object, setting it to nil.
+        This directly invalidates this Tool instance.
+        """
         self._reference.Delete()
 
     def refresh(self):
-        self._reference.Refresh()
+        """ Refreshes the tool, showing updated user controls.
+
+        Note:
+        Internally calling Refresh in Fusion will invalidate the handle to internal object this tool references.
+        You have to save the new handle that is returned (even though the documentation above says nothing is returned).
+        Calling this function on this Tool will invalidate other Tool instances referencing this same object.
+        But it will update the reference in this instance on which the function call is made.
+        """
+        new_ref = self._reference.Refresh()
+        self._reference = new_ref
 
     def parent(self):
         """ Return the parent Group this Tool belongs to, if any. """
@@ -171,7 +230,7 @@ class Tool(PyNode):
         self._reference.LoadSettings(settings)
 
     def comp(self):
-        """ Return the Comp this Tool belongs to. """
+        """ Return the Comp this Tool associated with. """
         return Comp(self._reference.Composition)
 
     def set_text_color(self, color):
@@ -194,6 +253,11 @@ class Tool(PyNode):
 
 
 class Flow(PyNode):
+    """ The Flow is the node-based overview of you Composition.
+
+    Fusion's internal name: `FlowView`
+    """
+
     def set_pos(self, tool, pos):
         """ Reposition the given Tool to the position in the FlowView.
 
@@ -221,6 +285,35 @@ class Flow(PyNode):
 
         return self._reference.GetPos(tool._reference)
 
+    def queue_set_pos(self, tool, pos):
+        """ Queues the moving of a tool to a new position.
+
+        This function improves performance if you want to move a lot of tools at the same time.
+        For big graphs and loops this is preferred over `set_pos` and `get_pos`
+
+        Added in Fusion 6.1: FlowView::QueueSetPos()
+
+        Example
+        >>> c = Comp()
+        >>> tools = c.get_selected_tools()
+        >>> flow = c.flow()
+        >>> for i, tool in enumerate(tools):
+        >>>     pos = [i, 0]
+        >>>     flow.queue_set_pos(tool, pos)
+        >>> flow.flush_set_pos()    # here the tools are actually moved
+        """
+        return self._reference.QueueSetPos(tool._reference, pos[0], pos[1])
+
+    def flush_set_pos_queue(self, tool, pos):
+        """ Moves all tools queued with `queue_set_pos`.
+
+        This function improves performance if you want to move a lot of tools at the same time.
+        For big graphs and loops this is preferred over `set_pos` and `get_pos`.
+
+        Added in Fusion 6.1: FlowView::FlushSetPosQueue()
+        """
+        return self._reference.FlushSetPosQueue()
+
     def get_scale(self):
         """ Return the current scale of the FlowView.
 
@@ -243,22 +336,45 @@ class Flow(PyNode):
         """ This function will rescale and reposition the FlowView to contain all tools. """
         self._reference.FrameAll()
 
+    def select(self, tool=None, state=True):
+        """ Select or deselect tools or clear the selection in this Flow.
+
+        This function will add or remove the tool specified in it's first argument from the current tool selection set.
+        The second argument should be set to False to remove the tool from the selection, or to True to add it.
+        If called with no arguments, the function will clear all tools from the current selection.
+
+        :param tool:
+        :type tool: Tool
+        :param state: Setting this argument to false will deselect the tool specified in the first argument. O
+                      Otherwise the default value of true is used, which selects the tool.
+        :type state: bool
+        :return: This function does not return a value.
+        """
+        if tool is None:
+            return self._reference.Select() # clear selection
+        elif not isinstance(tool, Tool):
+            tool = Tool(tool)
+
+        self._reference.Select(tool._reference, state)
+
 
 class Attribute(PyNode):
-    # GetTool               Get Tool this Attribute belongs to
+    """ The Attribute is the base class for Fusion's Input and Output types. """
 
     def get(self, time=None):
         """ Get the value of this Attribute.
 
             If time is provided the value is evaluated at that specific time, otherwise current time is used.
         """
+        # TODO: Confirm this works on both Input and Output.
         if time is None:
-            time = self.tool().comp().get_current_time()
+            time = self._reference.GetTool().Composition.CurrentTime # optimize over going through PyNodes (??)
+            # time = self.tool().comp().get_current_time()
 
         return self._reference[time]
 
     def disconnect(self):
-        pass
+        raise NotImplementedError()
 
     def tool(self):
         """ Return the Tool this Attribute belongs to """
@@ -266,21 +382,18 @@ class Attribute(PyNode):
 
 
 class Input(Attribute):
-    # GetExpression
-    # SetExpression
     # WindowControlsVisible
     # HideWindowControls
     # ViewControlsVisible
     # HideViewControls
     # GetConnectedOutput
-    # GetKeyFrames
     # ConnectTo
     # input[time] == value
     def connect_output(self, output):
         if not isinstance(output, Output):
             output = Output(output)
 
-        self._reference.ConnectTo
+        self._reference.ConnectTo(output._reference)
 
     def connection(self):
         other = self._reference.GetConnectedOutput()
@@ -288,7 +401,7 @@ class Input(Attribute):
             return Output(other)
 
     def get_expression(self):
-        """ This function returns the expression string shown within the Input's Expression field.
+        """ Returns the expression string shown within the Input's Expression field.
 
         :return: Returns the simple expression string from a given input if any, or an empty string if not.
         :rtype: str
@@ -296,7 +409,7 @@ class Input(Attribute):
         return self._reference.GetExpression()
 
     def set_expression(self, expression):
-        """ This function set the Expression field for the Input to the given string.
+        """ Set the Expression field for the Input to the given string.
 
         :param expression: A simple expression string.
         :type expression: str
@@ -304,9 +417,19 @@ class Input(Attribute):
         self._reference.SetExpression(expression)
 
     def get_keyframes(self):
+        """ Return the times at which this Input has keys.
+
+        :return: List of int values indicating frames.
+        :rtype: list
+        """
         return self._reference.GetKeyFrames().values()
 
     def is_connected(self):
+        """ Return whether the Input is connected to another Output
+
+        :return: True if connected, otherwise False
+        :rtype: bool
+        """
         return bool(self._reference.GetConnectedOutput())
 
 
