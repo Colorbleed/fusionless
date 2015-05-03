@@ -13,32 +13,70 @@
 
 
 class PyNode(object):
+    """ This is the base class for all classes referencing Fusion's classes.
+
+    Upon initialization of any PyNode class it checks whether the referenced data is of the correct type using Python's
+    special `__new__` method. This way we convert the instance to correct class type based on the internal Fusion type.
+
+    Example
+        >>> node = PyNode()
+        >>> print type(node)
+        >>> # Comp()
+
+    At any time you can access Fusion's python object from the instance using the `_reference` attribute.
+
+    Example
+        >>> node = PyNode()
+        >>> reference = node._reference
+        >>> print reference
+
+
+    """
 
     _reference = None   # reference to PyRemoteObject
 
     def __new__(cls, reference=None):
-        # If no arguments provided assume reference to fusion's comp
-        if reference is None:
+
+        if isinstance(reference, cls):  # if argument provided is already of correct class type return it
+            return reference
+        if reference is None:           # if no arguments assume reference to fusion's comp
             reference = comp
 
         # Acquire an attribute to check for type (start prefix)
         # TODO: Check if could be optimized (micro-optimization) by getting something that returns less values or \
         #       might already be retrievable from the PyRemoteObject.
-        attrs = reference.GetAttrs()
-        data_type = next(iter(attrs))
 
-        # Define the new class type
+        # Check if the reference is a PyRemoteObject. Since we don't have access to the class type that fusion returns
+        # outside of Fusion we use a hack based on its name
+        if type(reference).__name__ != 'PyRemoteObject':
+            raise TypeError()
+
         newcls = None
-        if data_type.startswith("COMP"):
-            newcls = Comp
-        elif data_type.startswith("TOOL"):
-            newcls = Tool
-        elif data_type.startswith("INP"):
-            newcls = Input
-        elif data_type.startswith("OUT"):
-            newcls = Output
-        elif data_type.startswith("VIEW"):
-            newcls = Flow
+        attrs = reference.GetAttrs()
+        if attrs:
+            # Comp, Tool, Input, Output, View, etc. all return attributes that define its type
+            data_type = next(iter(attrs))
+
+            # Define the new class type
+            if data_type.startswith("COMP"):
+                newcls = Comp
+            elif data_type.startswith("TOOL"):
+                newcls = Tool
+            elif data_type.startswith("INP"):
+                newcls = Input
+            elif data_type.startswith("OUT"):
+                newcls = Output
+            elif data_type.startswith("VIEW"):
+                newcls = Flow
+
+        else:
+            # Image (output value) does not return attributes from GetAttrs() so we use some data from the PyRemoteObject
+            str_data_type = str(reference).split(' ', 1)[0]
+
+            if str_data_type == "Image":
+                newcls = Image
+
+
 
         # Ensure we convert to a type preferred by the user
         # eg. currently Tool() would come out as Comp() since no arguments are provided.
@@ -75,13 +113,26 @@ class PyNode(object):
         return self._reference.ID
 
     def __getattr__(self, attr):
-        return getattr(self._reference, attr)
+        """ Allow access to Fusion's built-in methods on the reference directly.
+
+        .. note:: Since the normal behaviour is to raise a very confusing TypeError whenever an unknown method is called
+                  on the PyRemoteObject so we added a raise a more explanatory error if we retrieve unknown data.
+        """
+        result = getattr(self._reference, attr)
+        if result is None:
+            raise AttributeError("{0} object has no attribute '{1}'".format(self, attr))
+
+        return result
 
     def __repr__(self):
         return '{0}("{1}")'.format(self.__class__.__name__, str(self._reference.Name))
 
 
 class Comp(PyNode):
+    """ A Comp instance refers to a Fusion composition.
+
+    Here you can perform the global changes to the current composition.
+    """
 
     def get_current_time(self):
         return self._reference.CurrentTime
@@ -139,6 +190,68 @@ class Tool(PyNode):
         flow = comp.CurrentFrame.FlowView
         flow.SetPos(self._reference, *pos)
 
+    # region inputs
+    def main_input(self, index):
+        """ Returns the main (visible) Input knob of the tool, by index.
+
+        .. note:: The index starts at 1!
+
+        :param index: numerical index of the knob
+        :type index: int
+        :return: Input at the given index.
+        :rtype: Input
+        """
+        return Input(self._reference.FindMainInput(index))
+
+    def input(self, id):
+        """ Returns an Input by ID.
+
+        :param id: ID of the Input
+        :type id: str
+        :return: Output at the given index.
+        :rtype: Output
+        """
+        return Input(self._reference[id])
+
+    def inputs(self):
+        """ Return all Inputs of this Tools """
+        return [Input(x) for x in self._reference.GetInputList().values()]
+    # endregion
+
+    # region outputs
+    def main_output(self, index):
+        """ Returns the main (visible) Output knob of the tool, by index.
+
+        .. note:: The index starts at 1!
+
+        :param index: numerical index of the knob
+        :type index: int
+        :return: Output at the given index.
+        :rtype: Output
+        """
+        return Output(self._reference.FindMainOutput(index))
+
+    def output(self, id):
+        """ Returns the Output knob by ID.
+
+        :param id: ID of the Output.
+        :type id: str
+        :return: Output at the given index.
+        :rtype: Output
+        """
+        # TODO: Optimize `Tool.output(id)`, there must be a more optimized way than doing it like this.
+        output_reference = next(x for x in self.outputs() if x.ID == id)
+        if not output_reference:
+            return None
+        else:
+            return Output(output_reference)
+
+    def outputs(self):
+        """ Return all Outputs of this Tools """
+        return [Output(x) for x in self._reference.GetOutputList().values()]
+    # endregion
+
+    # region connections
     def connect_main(self, tool, from_index=1, to_index=1):
         """ Helper function that quickly connects main outputs to another tool's main inputs.
 
@@ -152,26 +265,21 @@ class Tool(PyNode):
         id = tool._reference.FindMainInput(1).ID
         tool._reference[id] = self._reference.FindMainOutput(1)     # connect
 
-    # def attr(self, id):
-    #     # TODO: Fusion differentiaties between Outputs and Inputs so a 'global' attr function is confusing.
-    #     #       Maybe opt for self.input(id) and self.output(id) to retrieve the respective types.
-    #     return Attribute(self._reference[id])
+    def disconnect(self, inputs=True, outputs=True):
+        """ Disconnect all inputs and outputs of this tool. """
+        if inputs:
+            for input in self.inputs():
+                input.disconnect()
 
-    def inputs(self):
-        """ Return all Inputs of this Tools """
-        return [Input(x) for x in self._reference.GetInputList().values()]
+        if outputs:
+            for output in self.outputs():
+                output.disconnect()
 
-    def outputs(self):
-        """ Return all Outputs of this Tools """
-        return [Output(x) for x in self._reference.GetOutputList().values()]
-
+    # TODO: Implement 'Tool.connections()'
     def connections(self, inputs=True, outputs=True):
         """ Return all Connections of Inputs and Outputs of this Tools """
         raise NotImplementedError()
-
-    def disconnect_all(self):
-        """ Disconnect all inputs and outputs """
-        raise NotImplementedError()
+    # endregion
 
     def rename(self, name):
         """ Sets the name for this Tool to `name`.
@@ -401,6 +509,11 @@ class Input(Attribute):
     def connect_to(self, output):
         """ Connect this Input to another Output setting an incoming connection for this tool.
 
+        .. note:: This function behaves similarly to right clicking on a property, selecting Connect To, and selecting
+                  the property you wish to connect the input to. In that respect, if you try to connect non-similar
+                  data types (a path's value to a polygon's level, for instance) it will not connect the values.
+                  Such an action will yield NO error message.
+
         :param output: The Output to connect to.
         :type output: Output
         """
@@ -566,6 +679,11 @@ class Output(Attribute):
     def connect_to(self, input):
         """ Connect this Output to another Input gaining an outgoing connection for this tool.
 
+        .. note:: This function behaves similarly to right clicking on a property, selecting Connect To, and selecting
+                  the property you wish to connect the input to. In that respect, if you try to connect non-similar
+                  data types (a path's value to a polygon's level, for instance) it will not connect the values.
+                  Such an action will yield NO error message.
+
         :param input: The Input to connect to.
         :type input: Input
         """
@@ -594,3 +712,16 @@ class Output(Attribute):
     # TODO: implement `Output.EnableDiskCache`      Controls disk-based caching
     # TODO: implement `Output.ClearDiskCache`       Clears frames from the disk cache
     # TODO: implement `Output.ShowDiskCacheDlg`     Displays the Cache-To-Disk dialog for user interaction
+
+
+class Parameter(PyNode):
+    """ Base class for all parameter (values) types """
+    pass
+
+
+class Image(Parameter):
+    pass
+
+
+class TransformMatrix(Parameter):
+    pass
