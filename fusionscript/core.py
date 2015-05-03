@@ -11,6 +11,7 @@
 
 """
 
+
 class PyNode(object):
 
     _reference = None   # reference to PyRemoteObject
@@ -120,7 +121,6 @@ class Tool(PyNode):
     You can use this object to perform changes to a single tool (or make connections with another) or query information.
     For example renaming, deleting, connecting and retrieving its inputs/outputs.
     """
-
     def get_pos(self):
         """ This function will return the X and Y position this tool in the FlowView.
 
@@ -152,10 +152,10 @@ class Tool(PyNode):
         id = tool._reference.FindMainInput(1).ID
         tool._reference[id] = self._reference.FindMainOutput(1)     # connect
 
-    def attr(self, id):
-        # TODO: Fusion differentiaties between Outputs and Inputs so a 'global' attr function is confusing.
-        #       Maybe opt for self.input(id) and self.output(id) to retrieve the respective types.
-        return Attribute(self._reference[id])
+    # def attr(self, id):
+    #     # TODO: Fusion differentiaties between Outputs and Inputs so a 'global' attr function is confusing.
+    #     #       Maybe opt for self.input(id) and self.output(id) to retrieve the respective types.
+    #     return Attribute(self._reference[id])
 
     def inputs(self):
         """ Return all Inputs of this Tools """
@@ -174,9 +174,15 @@ class Tool(PyNode):
         raise NotImplementedError()
 
     def rename(self, name):
+        """ Sets the name for this Tool to `name`.
+
+        :param name: The name to change to.
+        :type name: str
+        """
         self._reference.SetAttrs({'TOOLB_NameSet': True, 'TOOLS_Name': name})
 
     def clear_name(self):
+        """ Clears the user-defined name for this tool and resets it to automated internal name. """
         self._reference.SetAttrs({'TOOLB_NameSet': False, 'TOOLS_Name': ''})
 
     def delete(self):
@@ -251,6 +257,9 @@ class Tool(PyNode):
         """
         self._reference.TileColor = color
 
+    # TODO: Implement `Tool.get_input(id)` or something similar to easily retrieve a specific input (or list_input()?)
+    # TODO: Implement `Tool.get_input(id)` or something similar to easily retrieve a specific output
+
 
 class Flow(PyNode):
     """ The Flow is the node-based overview of you Composition.
@@ -294,13 +303,13 @@ class Flow(PyNode):
         Added in Fusion 6.1: FlowView::QueueSetPos()
 
         Example
-        >>> c = Comp()
-        >>> tools = c.get_selected_tools()
-        >>> flow = c.flow()
-        >>> for i, tool in enumerate(tools):
-        >>>     pos = [i, 0]
-        >>>     flow.queue_set_pos(tool, pos)
-        >>> flow.flush_set_pos()    # here the tools are actually moved
+            >>> c = Comp()
+            >>> tools = c.get_selected_tools()
+            >>> flow = c.flow()
+            >>> for i, tool in enumerate(tools):
+            >>>     pos = [i, 0]
+            >>>     flow.queue_set_pos(tool, pos)
+            >>> flow.flush_set_pos()    # here the tools are actually moved
         """
         return self._reference.QueueSetPos(tool._reference, pos[0], pos[1])
 
@@ -361,41 +370,61 @@ class Flow(PyNode):
 class Attribute(PyNode):
     """ The Attribute is the base class for Fusion's Input and Output types. """
 
-    def get(self, time=None):
-        """ Get the value of this Attribute.
+    def tool(self):
+        """ Return the Tool this Attribute belongs to """
+        return Tool(self._reference.GetTool())
+
+    # TODO: Implement `Attribute.connections` if such method/implementation would make sense for both Input/Output
+    # def connections(self):
+    #     raise NotImplementError()
+
+
+class Input(Attribute):
+    """ An Input is any attributes that can be set or connected to by the user on the incoming side of a tool.
+
+    .. note:: These are the input knobs in the Flow view, but also the input values inside the Control view for a Tool.
+
+    Because of the way node-graphs work any value that goes into a Tool required to process the information should
+    result (in most scenarios) in a reproducible output under the same conditions.
+    """
+    def get_value(self, time=None):
+        """ Get the value of this Input at the given time.
 
             If time is provided the value is evaluated at that specific time, otherwise current time is used.
         """
-        # TODO: Confirm this works on both Input and Output.
         if time is None:
             time = self._reference.GetTool().Composition.CurrentTime # optimize over going through PyNodes (??)
             # time = self.tool().comp().get_current_time()
 
         return self._reference[time]
 
-    def disconnect(self):
-        raise NotImplementedError()
+    def connect_to(self, output):
+        """ Connect this Input to another Output setting an incoming connection for this tool.
 
-    def tool(self):
-        """ Return the Tool this Attribute belongs to """
-        return Tool(self._reference.GetTool())
+        :param output: The Output to connect to.
+        :type output: Output
+        """
 
+        # disconnect
+        if output is None:
+            self._reference.ConnectTo(None)
+            return
 
-class Input(Attribute):
-    # WindowControlsVisible
-    # HideWindowControls
-    # ViewControlsVisible
-    # HideViewControls
-    # GetConnectedOutput
-    # ConnectTo
-    # input[time] == value
-    def connect_output(self, output):
+        # or connect
         if not isinstance(output, Output):
             output = Output(output)
 
         self._reference.ConnectTo(output._reference)
 
-    def connection(self):
+    def disconnect(self):
+        """ Disconnect the Output this Input is connected to, if any. """
+        self.connect_to(None)
+
+    def get_connected_output(self):
+        """ Returns the output that is connected to a given input.
+
+        :return: Output this Input is connected to if any, else None.
+        """
         other = self._reference.GetConnectedOutput()
         if other:
             return Output(other)
@@ -425,23 +454,143 @@ class Input(Attribute):
         return self._reference.GetKeyFrames().values()
 
     def is_connected(self):
-        """ Return whether the Input is connected to another Output
+        """ Return whether the Input is an incoming connection from an Output
 
         :return: True if connected, otherwise False
         :rtype: bool
         """
         return bool(self._reference.GetConnectedOutput())
 
+    def data_type(self):
+        """ Returns the type of Parameter (e.g. Number, Point, Text, Image) this Input accepts.
+
+        :return: Type of parameter.
+        :rtype: str
+        """
+        return self._reference.GetAttrs()['OUTS_DataType']
+
+    # TODO: implement `Input.WindowControlsVisible`
+    # TODO: implement `Input.HideWindowControls`
+    # TODO: implement `Input.ViewControlsVisible`
+    # TODO: implement `Input.HideViewControls`
+
 
 class Output(Attribute):
-    # GetValue	            Retrieve the Output's value at the given time
-    # GetValueMemBlock	    Retrieve the Output's value as a MemBlock
-    # EnableDiskCache	    Controls disk-based caching
-    # ClearDiskCache	    Clears frames from the disk cache
-    # ShowDiskCacheDlg	    Displays the Cache-To-Disk dialog for user interaction
-    # GetConnectedInputs	Returns a table of Inputs connected to this Output
-    def connections(self):
+    """ An Output is any attributes that is a result from a Tool that can be connected as input to another Tool.
+
+    .. note:: These are the output knobs in the Flow view.
+    """
+    def get_value(self, time=None):
+        """ Get the value of this Output at the given time.
+
+            If time is provided the value is evaluated at that specific time, otherwise current time is used.
+
+        :param time: Time at which to evaluate the Output. If none provided current time will be used.
+        """
+        return self.get_value_attrs(time=time)[0]
+
+    def get_value_attrs(self, time=None):
+        """ Return a tuple of value and attrs for this Output.
+
+         `value` may be None, or a variety of different types:
+
+            Number 	- returns a number
+            Point 	- returns a table with X and Y members
+            Text 	- returns a string
+            Clip 	- returns the filename string
+            Image 	- returns an Image object
+
+        `attrs` is a dictionary with the following entries:
+
+            Valid 	- table with numeric Start and End entries
+            DataType 	- string ID for the parameter type
+            TimeCost 	- time take to render this parameter
+
+        :param time: Time at which to evaluate the Output. If none provided current time will be used.
+        :return: value and attributes of this output at the given time.
+        """
+        if time is None:
+            time = self._reference.GetTool().Composition.CurrentTime # optimize over going through PyNodes (??)
+            # time = self.tool().comp().get_current_time()
+
+        return self._reference.GetValue(time)
+
+    def get_time_cost(self, time=None):
+        """ Return the time taken to render this parameter at the given time.
+
+        .. note:: This will evaluate the output and could be computationally expensive.
+
+        :param time: Time at which to evaluate the Output. If none provided current time will be used.
+        :return: Time taken to render this Output.
+        :rtype: float
+        """
+        return self.get_value_attrs(time=time)[1]['TimeCost']
+
+    def disconnect(self, inputs=None):
+        """ Disconnect all the Inputs this Output is connected to (or only those given as Inputs). """
+
+        if inputs is None:      # disconnect all (if any)
+            inputs = self.get_connected_inputs()
+        else:                   # disconnect a subset of the connections (if valid)
+            # ensure iterable
+            if not isinstance(inputs, (list, tuple)):
+                inputs = [inputs]
+
+            # ensure all are Inputs
+            inputs = [Input(input) for input in inputs]
+
+            # ensure Inputs are connected to this output
+            connected_inputs = set(self._reference.GetConnectedInputs().values())
+            inputs = [input for input in inputs if input._reference in connected_inputs]
+
+        for input in inputs:
+            input._reference.ConnectTo(None)
+
+    def get_connected_inputs(self):
+        """ Returns a list of all Inputs that are connected to this Output.
+
+        :return: List of Inputs connected to this Output.
+        :rtype: list
+        """
         return [Input(x) for x in self._reference.GetConnectedInputs().values()]
 
+    def get_dod(self):
+        """ Return the Domain of Definition for this output.
+
+        :return: The domain of definition for this output in the as list of integers ordered: left, bottom, right, top.
+        :rtype: [int, int, int, int]
+        """
+        return self._reference.GetDoD()
+
+    # region connections
+    def connect_to(self, input):
+        """ Connect this Output to another Input gaining an outgoing connection for this tool.
+
+        :param input: The Input to connect to.
+        :type input: Input
+        """
+        if not isinstance(input, Input):
+            input = Input(input)
+
+        input.connect_to(self)
+
     def is_connected(self):
+        """ Return whether the Output has any outgoing connection to any Inputs.
+
+        :return: True if connected, otherwise False
+        :rtype: bool
+        """
         return any(self._reference.GetConnectedInputs().values())
+
+    def data_type(self):
+        """ Returns the type of Parameter (e.g. Number, Point, Text, Image) this Output accepts.
+
+        :return: Type of parameter.
+        :rtype: str
+        """
+        return self._reference.GetAttrs()['INPS_DataType']
+
+    # TODO: implement `Output.GetValueMemBlock`	    Retrieve the Output's value as a MemBlock
+    # TODO: implement `Output.EnableDiskCache`      Controls disk-based caching
+    # TODO: implement `Output.ClearDiskCache`       Clears frames from the disk cache
+    # TODO: implement `Output.ShowDiskCacheDlg`     Displays the Cache-To-Disk dialog for user interaction

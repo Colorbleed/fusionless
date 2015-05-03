@@ -30,7 +30,7 @@ class UndoChunk(object):
         comp.EndUndo(True)
 
 
-class LockAndUndo(object):
+class LockAndUndoChunk(object):
     def __init__(self, undoQueueName="Script CMD"):
         self._name = undoQueueName
 
