@@ -29,14 +29,13 @@ class PyNode(object):
         >>> node = PyNode()
         >>> reference = node._reference
         >>> print reference
-
-
     """
 
     _reference = None   # reference to PyRemoteObject
 
-    def __new__(cls, reference=None):
+    def __new__(cls, *args, **kwargs):
 
+        reference = args[0] if args else None
         if isinstance(reference, cls):  # if argument provided is already of correct class type return it
             return reference
         if reference is None:           # if no arguments assume reference to fusion's comp
@@ -96,6 +95,9 @@ class PyNode(object):
     def set_attr(self, key, value):
         self._reference.SetAttrs({key: value})
 
+    def get_attrs(self):
+        return self._reference.GetAttrs()
+
     def name(self):
         """ The internal Fusion Name as string of the node this PyNode references.
 
@@ -133,7 +135,8 @@ class Comp(PyNode):
 
     Here you can perform the global changes to the current composition.
     """
-
+    # TODO: Finish the `Comp` docstring documentations
+    # TODO: Implement the rest of the `Comp` methods.
     def get_current_time(self):
         return self._reference.CurrentTime
 
@@ -142,10 +145,16 @@ class Comp(PyNode):
         return [Tool(x) for x in self._reference.GetToolList(True, *args).values()]
 
     def get_active_tool(self):
-        return self._reference.ActiveTool
+        """
+        :return: Turrently active tool on this comp
+        """
+        return Tool(self._reference.ActiveTool)
 
     def set_active_tool(self, tool):
-        self._reference.setActiveTool(tool)
+        if not isinstance(tool, Tool):
+            tool = Tool(tool)
+
+        self._reference.setActiveTool(tool._reference)
 
     def create_node(self, node_type, attrs=None, insert=False):
         args = (-32768, -32768) if insert else tuple()
@@ -160,6 +169,233 @@ class Comp(PyNode):
     def paste(self, values=None):
         args = tuple() if values is None else (values,)
         return self._reference.Paste(*args)
+
+    def lock(self):
+        """ Sets the composition to a locked state.
+
+        Sets a composition to non-interactive ("batch", or locked) mode.
+        This makes Fusion suppress any dialog boxes which may appear, and additionally prevents any re-rendering in
+        response to changes to the controls. A locked composition can be unlocked with the unlock() function, which
+        returns the composition to interactive mode.
+
+        It is often useful to surround a script with Lock() and Unlock(), especially when adding tools or modifying a
+        composition. Doing this ensures Fusion won't pop up a dialog to ask for user input, e.g. when adding a Loader,
+        and can also speed up the operation of the script since no time will be spent rendering until the comp is
+        unlocked.
+
+        For convenience this is also available as a Context Manager as `fusionscript.context.LockComp`.
+        """
+        self._reference.Lock()
+
+    def unlock(self):
+        """ Sets the composition to an unlocked state. """
+        self._reference.Unlock()
+
+    def redo(self, num=1):
+        """ Redo one or more changes to the composition.
+
+        :param num: Amount of changes to redo.
+        :type num: int
+        """
+        self._reference.Redo(num)
+
+    def undo(self, num):
+        """ Undo one or more changes to the composition.
+
+        :param num: Amount of changes to undo.
+        :type num: int
+        """
+        self._reference.Undo(num)
+
+    def start_undo(self, name):
+        """
+        The StartUndo() function is always paired with an EndUndo() function.
+        Any changes made to the composition by the lines of script between StartUndo() and EndUndo() are stored as a
+        single Undo event.
+
+        Changes captured in the undo event can be undone from the GUI using CTRL-Z, or the Edit menu.
+        They can also be undone from script, by calling the `undo()` method.
+
+        .. note::
+            If the script exits before `end_undo()` is called Fusion will automatically close the undo event.
+
+        :param name: specifies the name displayed in the Edit/Undo menu of the Fusion GUI a string containing the
+                     complete path and name of the composition to be saved.
+        :type name: str
+        """
+        self._reference.StartUndo(name)
+
+    def end_undo(self, keep):
+        """
+        The `start_undo()` is always paired with an `end_undo()` call.
+        Any changes made to the composition by the lines of script between `start_undo()` and `end_undo()` are stored as
+        a single Undo event.
+
+        Changes captured in the undo event can be undone from the GUI using CTRL-Z, or the Edit menu.
+        They can also be undone from script, by calling the `undo()` method.
+
+        Specifying 'True' results in the undo event being added to the undo stack, and appearing in the appropriate
+        menu. Specifying False' will result in no undo event being created. This should be used sparingly, as the user
+        (or script) will have no way to undo the preceding commands.
+
+        .. note::
+            If the script exits before `end_undo()` is called Fusion will automatically close the undo event.
+
+        :param keep: Determines whether the captured undo event is to kept or discarded.
+        :type keep: bool
+        """
+        self._reference.EndUndo(keep)
+
+    def clear_undo(self):
+        """ Use this function to clear the undo/redo history for the composition. """
+        self._reference.ClearUndo()
+
+    def save(self):
+        """ Save the composition. """
+        self._reference.Save()
+
+    def play(self):
+        """ This function is used to turn on the play control in the playback controls of the composition. """
+        self._reference.Play()
+
+    def stop(self):
+        """ This function is used to turn off the play control in the playback controls of the composition. """
+        self._reference.Stop()
+
+    def render(self, wait_for_render, **kwargs):
+        """ Renders the composition.
+
+        Args:
+            wait_for_render (bool): Whether the script should wait for the render to complete or continue processing
+                                    once the render has begun. Defaults to False
+
+        Kwargs:
+            start (int): The frame to start rendering at. Default: Comp's render start settings.
+            end (int): The frame to stop rendering at. Default: Comp's render end settings.
+            high_quality (bool): Render in High Quality (HiQ). Default True.
+            render_all (bool): Render all tools, even if not required by a saver. Default False.
+            motion_blur (bool): Do motion blur in render, where specified in tools. Default true.
+            size_type (int): Resize the output:
+                                -1. Custom (only used by PreviewSavers during a preview render)
+                                 0. Use prefs setting
+                                 1. Full Size (default)
+                                 2. Half Size
+                                 3. Third Size
+                                 4. Quarter Size
+            width (int): Width of result when doing a Custom preview (defaults to pref)
+            height (int): Height of result when doing a Custom preview (defaults to pref)
+            keep_aspect (bool): Maintains the frame aspect when doing a Custom preview.
+                                Defaults to Preview prefs setting.
+            step_render (bool): Render only 1 out of every X frames ("shoot on X frames") or render every frame.
+                                Defaults to False.
+            steps (int): If step rendering, how many to step. Default 5.
+            use_network (bool): Enables rendering with the network. Default False.
+            groups (str):
+            flags (number):
+            tool (Tool): A tool to render up to. If this is specified only sections of the comp up to this tool will be
+                         rendered. eg you could specify comp.Saver1 to only render *up to* Saver1, ignoring any tools
+                         (including savers) after it.
+            frame_range (str): Describes which frames to render. (eg "1..100,150..180").
+                               Defaults to "Start".."End"
+
+        Returns:
+            True if the composition rendered successfully, None if it failed to start or complete.
+        """
+        # convert our 'Pythonic' keyword arguments to Fusion's internal ones.
+        conversion = {'start': 'Start',
+                      'end': 'End',
+                      'high_quality': 'HiQ',
+                      'render_all': 'RenderAll',
+                      'motion_blur': 'MotionBlur',
+                      'size_type': 'SizeType',
+                      'width': 'Width',
+                      'height': 'Height',
+                      'keep_aspect': 'KeepAspect',
+                      'step_render': 'StepRender',
+                      'steps': 'Steps',
+                      'use_network': 'UseNetwork',
+                      'groups': 'Groups',
+                      'flags': 'Flags ',
+                      'tool': 'Tool ',
+                      'frame_range': 'FrameRange'}
+        for key, new_key in conversion.iteritems():
+            if key in kwargs:
+                value = kwargs.pop(key)
+                kwargs[new_key] = value
+
+        # use our required argument
+        required_kwargs = {'Wait': wait_for_render}
+        kwargs.update(required_kwargs)
+
+        return self._reference.Render(**kwargs)
+
+    def render_range(self, wait_to_render, start, end, steps=1, **kwargs):
+        """ A render that specifies an explicit render range.
+
+        Args:
+            wait_for_render (bool): Whether the script should wait for the render to complete or continue processing
+                                    once the render has begun. Defaults to False
+            start (int): The frame to start rendering at.
+            end (int): The frame to stop rendering at.
+            steps (int): If step rendering, how many to step. Default 1.
+
+        Kwargs:
+            See `Comp.render()` method.
+
+        Returns:
+            True if the composition rendered successfully, None if it failed to start or complete.
+        """
+        range_kwargs = {'start': start,
+                        'end': end,
+                        'steps': steps}
+        kwargs.update(range_kwargs)
+
+        return self.render(wait_to_render=wait_to_render, **kwargs)
+
+    def run_script(self, filename):
+        """ Run a script within the composition's script context
+
+        Use this function to run a script in the composition environment.
+        This is similar to launching a script from the comp's Scripts menu.
+
+        The script will be started with 'fusion' and 'composition' variables set to the Fusion and currently active
+        Composition objects. The filename given may be fully specified, or may be relative to the comp's Scripts: path.
+
+        Since version 6.3.2 you can run Python and eyeonScripts.
+        Fusion supports .py .py2 and .py3 extensions to differentiate python script versions.
+
+        :param filename: The filename of a script to be run in the composition environment.
+        :type filename: str
+        """
+        self._reference.RunScript(filename)
+
+    def is_rendering(self):
+        """ Returns True if the comp is busy rendering.
+
+        Use this method to determine whether a composition object is currently rendering.
+        It will return True if it is playing, rendering, or just rendering a tool after trying to view it.
+
+        :rtype: bool
+        """
+        return self._reference.IsRendering()
+
+    def is_playing(self):
+        """ Returns True if the comp is being played.
+
+        Use this method to determine whether a composition object is currently playing.
+
+        :rtype: bool
+        """
+        return self._reference.IsPlaying()
+
+    def is_locked(self):
+        """ Returns True if the comp is being played.
+
+        Use this method to see whether a composition is locked or not.
+
+        :rtype: bool
+        """
+        return self._reference.IsPlaying()
 
     def __repr__(self):
         filename = self._reference.GetAttrs()['COMPS_FileName']
@@ -366,7 +602,9 @@ class Tool(PyNode):
         self._reference.TileColor = color
 
     # TODO: Implement `Tool.get_input(id)` or something similar to easily retrieve a specific input (or list_input()?)
-    # TODO: Implement `Tool.get_input(id)` or something similar to easily retrieve a specific output
+    # TODO: Implement `Tool.get_output(id)` or something similar to easily retrieve a specific output
+    # TODO: Implement `Tool.has_keys()` to easily retrieve whether the tool has any keys
+    # TODO: Implement `Tool.remove_keys()` to easily remove all keys on all inputs
 
 
 class Flow(PyNode):
