@@ -6,7 +6,7 @@ class TestTools(unittest.TestCase):
     def test_rename(self):
         c = fu.Comp()
 
-        tool = c.create_node("Background")
+        tool = c.create_tool("Background")
         original_name = tool.name()
 
         tool.rename("foobar_macaroni")

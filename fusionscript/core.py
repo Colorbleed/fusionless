@@ -12,34 +12,42 @@
 """
 
 
-class PyNode(object):
+class PyObject(object):
     """ This is the base class for all classes referencing Fusion's classes.
 
-    Upon initialization of any PyNode class it checks whether the referenced data is of the correct type using Python's
-    special `__new__` method. This way we convert the instance to correct class type based on the internal Fusion type.
+    Upon initialization of any PyObject class it checks whether the referenced data is of the correct type using
+    Python's special `__new__` method. This way we convert the instance to correct class type based on the internal
+    Fusion type.
+
+    The `PyObject` is *fusionscript*'s class representation of Fusion's internal Object class.
+    All the other classes representing Fusion objects are derived from PyObject.
 
     Example
-        >>> node = PyNode()
+        >>> node = PyObject(comp)
         >>> print type(node)
         >>> # Comp()
 
     At any time you can access Fusion's python object from the instance using the `_reference` attribute.
 
     Example
-        >>> node = PyNode()
+        >>> node = PyObject()
         >>> reference = node._reference
         >>> print reference
     """
 
     _reference = None   # reference to PyRemoteObject
+    _default_reference = None
 
     def __new__(cls, *args, **kwargs):
 
         reference = args[0] if args else None
         if isinstance(reference, cls):  # if argument provided is already of correct class type return it
             return reference
-        if reference is None:           # if no arguments assume reference to fusion's comp
-            reference = comp
+        elif reference is None:           # if no arguments assume reference to default type for cls (if any)
+            if cls._default_reference is not None:
+                reference = cls._default_reference
+            else:
+                raise ValueError("Can't instantiate a PyObject with a reference to None")
 
         # Acquire an attribute to check for type (start prefix)
         # TODO: Check if could be optimized (micro-optimization) by getting something that returns less values or \
@@ -48,7 +56,7 @@ class PyNode(object):
         # Check if the reference is a PyRemoteObject. Since we don't have access to the class type that fusion returns
         # outside of Fusion we use a hack based on its name
         if type(reference).__name__ != 'PyRemoteObject':
-            raise TypeError()
+            raise TypeError("Reference is not of type PyRemoteObject but {0}".format(type(reference).__name__))
 
         newcls = None
         attrs = reference.GetAttrs()
@@ -75,18 +83,16 @@ class PyNode(object):
             if str_data_type == "Image":
                 newcls = Image
 
-
-
         # Ensure we convert to a type preferred by the user
         # eg. currently Tool() would come out as Comp() since no arguments are provided.
         #     so instead we provide a TypeError() to be clear in those instances.
-        if cls is not PyNode:
+        if cls is not PyObject:
             if not issubclass(newcls, cls):
-                raise TypeError("PyNode did not convert to preferred type. '{0}' is not an instance of '{1}'".format(newcls, cls))
+                raise TypeError("PyObject did not convert to preferred type. '{0}' is not an instance of '{1}'".format(newcls, cls))
 
         # Instantiate class and return
         if newcls:
-            klass = super(PyNode, cls).__new__(newcls)
+            klass = super(PyObject, cls).__new__(newcls)
             klass._reference = reference
             return klass
 
@@ -99,20 +105,38 @@ class PyNode(object):
         return self._reference.GetAttrs()
 
     def name(self):
-        """ The internal Fusion Name as string of the node this PyNode references.
+        """ The internal Fusion Name as string of the node this PyObject references.
 
         :return: A string value containing the internal Name of this node.
         :rtype: str
         """
         return self._reference.Name
 
+    def get_help(self):
+        """ Returns a formatted string of internal help information to Fusion.
+
+        :return: internal Fusion information
+        :rtype: str
+        """
+        return self._reference.GetHelp()
+
+    def get_reg(self):
+        """ Returns the related Registry instance for this PyObject.
+
+        :return: The registry related to this object.
+        :rtype: Registry
+        """
+        return self._reference.GetReg()
+
     def id(self):
-        """ The internal Fusion ID as string of the node this PyNode references.
+        """ The internal Fusion ID as string of the node this PyObject references.
+
+        .. note:: This uses the internal `GetID()` method on the `Object` instance.
 
         :return: A string value containing the internal ID of this node.
         :rtype: str
         """
-        return self._reference.ID
+        return self._reference.GetID()
 
     def __getattr__(self, attr):
         """ Allow access to Fusion's built-in methods on the reference directly.
@@ -129,14 +153,23 @@ class PyNode(object):
     def __repr__(self):
         return '{0}("{1}")'.format(self.__class__.__name__, str(self._reference.Name))
 
+    # TODO: Implement PyObject.GetApp
+    # TODO: Implement PyObject.Comp/Composition
+    # TODO: Implement PyObject.SetData
+    # TODO: Implement PyObject.GetData
+    # TODO: Implement PyObject.TriggerEvent
 
-class Comp(PyNode):
+
+class Comp(PyObject):
     """ A Comp instance refers to a Fusion composition.
 
     Here you can perform the global changes to the current composition.
     """
+    _default_reference = comp
+
     # TODO: Finish the `Comp` docstring documentations
     # TODO: Implement the rest of the `Comp` methods.
+
     def get_current_time(self):
         return self._reference.CurrentTime
 
@@ -156,11 +189,29 @@ class Comp(PyNode):
 
         self._reference.setActiveTool(tool._reference)
 
-    def create_node(self, node_type, attrs=None, insert=False):
+    def create_tool(self, node_type, attrs=None, insert=False, name=None):
+        """ Creates a new node in the composition based on the node type.
+
+        :param node_type:
+        :type node_type: str
+        :param attrs: A dictionary of input values to set.
+        :type attrs: dict
+        :param insert: If True the node gets created and automatically inserted/connected to the active tool.
+        :type insert: bool
+        :param name: If name provided the created node is automatically renamed to the provided name.
+        :type name: str
+
+        :return: The created Tool instance.
+        :rtype: Tool
+        """
         args = (-32768, -32768) if insert else tuple()
-        tool = Tool(comp.AddTool(node_type, *args))
+        tool = Tool(self._reference.AddTool(node_type, *args))
         if attrs:
             tool._reference.SetAttrs(attrs)
+
+        if name:
+            tool.rename(name)
+
         return tool
 
     def copy(self, tools):
@@ -402,7 +453,7 @@ class Comp(PyNode):
         return '{0}("{1}")'.format(self.__class__.__name__, filename)
 
 
-class Tool(PyNode):
+class Tool(PyObject):
     """ A Tool is a single operator/node in your composition.
 
     You can use this object to perform changes to a single tool (or make connections with another) or query information.
@@ -607,7 +658,7 @@ class Tool(PyNode):
     # TODO: Implement `Tool.remove_keys()` to easily remove all keys on all inputs
 
 
-class Flow(PyNode):
+class Flow(PyObject):
     """ The Flow is the node-based overview of you Composition.
 
     Fusion's internal name: `FlowView`
@@ -713,19 +764,19 @@ class Flow(PyNode):
         self._reference.Select(tool._reference, state)
 
 
-class Attribute(PyNode):
-    """ The Attribute is the base class for Fusion's Input and Output types. """
+class Link(PyObject):
+    """ The Link is the base class for Fusion's Input and Output types. """
 
     def tool(self):
-        """ Return the Tool this Attribute belongs to """
+        """ Return the Tool this Link belongs to """
         return Tool(self._reference.GetTool())
 
-    # TODO: Implement `Attribute.connections` if such method/implementation would make sense for both Input/Output
+    # TODO: Implement `Link.connections` if such method/implementation would make sense for both Input/Output
     # def connections(self):
     #     raise NotImplementError()
 
 
-class Input(Attribute):
+class Input(Link):
     """ An Input is any attributes that can be set or connected to by the user on the incoming side of a tool.
 
     .. note:: These are the input knobs in the Flow view, but also the input values inside the Control view for a Tool.
@@ -826,7 +877,7 @@ class Input(Attribute):
     # TODO: implement `Input.HideViewControls`
 
 
-class Output(Attribute):
+class Output(Link):
     """ An Output is any attributes that is a result from a Tool that can be connected as input to another Tool.
 
     .. note:: These are the output knobs in the Flow view.
@@ -952,7 +1003,7 @@ class Output(Attribute):
     # TODO: implement `Output.ShowDiskCacheDlg`     Displays the Cache-To-Disk dialog for user interaction
 
 
-class Parameter(PyNode):
+class Parameter(PyObject):
     """ Base class for all parameter (values) types """
     pass
 
@@ -963,3 +1014,12 @@ class Image(Parameter):
 
 class TransformMatrix(Parameter):
     pass
+
+
+class Fusion(PyObject):
+    _default_reference = fusion
+    # TODO: Implement Fusion methods: http://www.steakunderwater.com/VFXPedia/96.0.243.189/index5522.html?title=Eyeon:Script/Reference/Applications/Fusion/Classes/Fusion
+
+
+class Registry(PyObject):
+    """ Represents a type of object within Fusion """
