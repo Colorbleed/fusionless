@@ -184,10 +184,15 @@ class Comp(PyObject):
         return Tool(self._reference.ActiveTool)
 
     def set_active_tool(self, tool):
+
+        if tool is None:
+            self._reference.SetActiveTool(None)
+            return
+
         if not isinstance(tool, Tool):
             tool = Tool(tool)
 
-        self._reference.setActiveTool(tool._reference)
+        self._reference.SetActiveTool(tool._reference)
 
     def create_tool(self, node_type, attrs=None, insert=False, name=None):
         """ Creates a new node in the composition based on the node type.
@@ -634,6 +639,10 @@ class Tool(PyObject):
         """ Return the Comp this Tool associated with. """
         return Comp(self._reference.Composition)
 
+    def get_text_color(self):
+        """ Gets the Tool's text color. """
+        return self._reference.TextColor
+
     def set_text_color(self, color):
         """ Sets the Tool's text color.
 
@@ -642,6 +651,10 @@ class Tool(PyObject):
             >>> tool.set_text_color(None)
         """
         self._reference.TextColor = color
+
+    def get_tile_color(self):
+        """ Gets the Tool's tile color. """
+        return self._reference.TileColor
 
     def set_tile_color(self, color):
         """ Sets the Tool's tile color.
