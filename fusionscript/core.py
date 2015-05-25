@@ -39,6 +39,10 @@ class PyObject(object):
     _default_reference = None
 
     def __new__(cls, *args, **kwargs):
+        """ This is where the magic happens that automatically maps any of the PyNode objects to the correct class type.
+
+        :rtype: cls
+        """
 
         reference = args[0] if args else None
         if isinstance(reference, cls):  # if argument provided is already of correct class type return it
@@ -99,10 +103,60 @@ class PyObject(object):
         return None
 
     def set_attr(self, key, value):
-        self._reference.SetAttrs({key: value})
+        self.set_attrs({key: value})
+
+    def get_attr(self, key):
+        attrs = self.get_attrs()
+        return attrs[key]
+
+    def set_attrs(self, attr_values):
+        self._reference.SetAttrs(attr_values)
 
     def get_attrs(self):
         return self._reference.GetAttrs()
+
+    def set_data(self, name, value):
+        """ Set persistent data on this object.
+
+        Persistent data is a very useful way to store names, dates, filenames, notes, flags, or anything else, in such a
+        way that they are permanently associated with this instance of the object, and are stored along with the object.
+        This data can be retrieved at any time by using `get_data()`.
+
+        The method of storage varies by object:
+        - Fusion application:
+            SetData() called on the Fusion app itself will save its data in the  Fusion.prefs file, and will be
+            available whenever that copy of Fusion is running.
+
+        - Objects associated with a composition:
+            Calling SetData() on any object associated with a Composition will cause the data to be saved in the .comp
+            file, or in any settings files that may be saved directly from that object.
+
+        - Ephemeral objects not associated with composition:
+            Some ephemeral objects that are not associated with any composition and are not otherwise saved in any way,
+            may not have their data permanently stored at all, and the data will only persist as long as the object
+            itself does.
+
+        .. note::
+            You can use SetData to add a key called HelpPage to any tool. Its value can be a URL to a web page (for
+            example a link to a page on Vfxpedia) and will override this tool's default help when the user presses F1
+            (requires Fusion 6.31 or later). It's most useful for macros.
+
+            Example
+                >>> PyNode(comp).set_data('HelpPage', 'https://github.com/BigRoy/fusionscript')
+
+        :param name: This is the name of the attribute to set. As of 5.1, this name can be in "table.subtable" format,
+                     to allow setting persistent data within subtables.
+        :param value: This is the value to be recorded in the object's persistent data. It can be of almost any type.
+        """
+        self._reference.SetData(name, value)
+
+    def get_data(self, name):
+        """ Get persistent data from this object.
+
+        :param name: This is the name of the attribute to fetch.
+        :return: The value fetched from the object's persistent data. It can be of almost any type.
+        """
+        return self._reference.GetData(name)
 
     def name(self):
         """ The internal Fusion Name as string of the node this PyObject references.
@@ -138,6 +192,14 @@ class PyObject(object):
         """
         return self._reference.GetID()
 
+    def comp(self):
+        """ Return the Comp this instance belongs to.
+
+        :return: Comp of this instance
+        :rtype: Comp
+        """
+        return Comp(self._reference.Comp())
+
     def __getattr__(self, attr):
         """ Allow access to Fusion's built-in methods on the reference directly.
 
@@ -154,9 +216,6 @@ class PyObject(object):
         return '{0}("{1}")'.format(self.__class__.__name__, str(self._reference.Name))
 
     # TODO: Implement PyObject.GetApp
-    # TODO: Implement PyObject.Comp/Composition
-    # TODO: Implement PyObject.SetData
-    # TODO: Implement PyObject.GetData
     # TODO: Implement PyObject.TriggerEvent
 
 
@@ -178,14 +237,22 @@ class Comp(PyObject):
         return [Tool(x) for x in self._reference.GetToolList(True, *args).values()]
 
     def get_active_tool(self):
+        """ Return active tool.
+
+        :return: Currently active tool on this comp
+        :rtype: Tool or None
         """
-        :return: Turrently active tool on this comp
-        """
-        return Tool(self._reference.ActiveTool)
+        tool = self._reference.ActiveTool
+        return Tool(tool) if tool else None
 
     def set_active_tool(self, tool):
+        """ Set the current active tool in the composition to the given tool.
 
-        if tool is None:
+        If tool is None it ensure nothing is active.
+
+        :param tool: The tool instance to make active. If None provided active tool will be deselected.
+        """
+        if tool is None:    # deselect if None
             self._reference.SetActiveTool(None)
             return
 
@@ -197,7 +264,7 @@ class Comp(PyObject):
     def create_tool(self, node_type, attrs=None, insert=False, name=None):
         """ Creates a new node in the composition based on the node type.
 
-        :param node_type:
+        :param node_type: The type id of the node to create.
         :type node_type: str
         :param attrs: A dictionary of input values to set.
         :type attrs: dict
@@ -209,12 +276,16 @@ class Comp(PyObject):
         :return: The created Tool instance.
         :rtype: Tool
         """
+
+        # Fusion internally uses the magic 'position' (-32768, -32768) to trigger an automatic connection and insert
+        # when creating a new node. So we use that internal functionality when `insert` parameter is True.
         args = (-32768, -32768) if insert else tuple()
         tool = Tool(self._reference.AddTool(node_type, *args))
-        if attrs:
-            tool._reference.SetAttrs(attrs)
 
-        if name:
+        if attrs:   # Directly set attributes if any provided
+            tool.set_attrs(attrs)
+
+        if name:    # Directly set a name if any provided
             tool.rename(name)
 
         return tool
@@ -346,8 +417,9 @@ class Comp(PyObject):
                                 Defaults to False.
             steps (int): If step rendering, how many to step. Default 5.
             use_network (bool): Enables rendering with the network. Default False.
-            groups (str):
-            flags (number):
+            groups (str): Use these network slave groups to render on (when net rendering). Default "all".
+            flags (number): Number specifying render flags, usually 0 (the default).
+                            Most flags are specified by other means, but a value of 262144 is used for preview renders.
             tool (Tool): A tool to render up to. If this is specified only sections of the comp up to this tool will be
                          rendered. eg you could specify comp.Saver1 to only render *up to* Saver1, ignoring any tools
                          (including savers) after it.
@@ -470,7 +542,7 @@ class Tool(PyObject):
         :return: This function returns two numeric values containing the X and Y co-ordinates of the tool.
         :rtype: list(float, float)
         """
-        flow = comp.CurrentFrame.FlowView
+        flow = self.comp().CurrentFrame.FlowView
         return flow.GetPosTable(self._reference).values()
 
     def set_pos(self, pos):
@@ -479,7 +551,7 @@ class Tool(PyObject):
         :param pos: Numeric values specifying the x and y co-ordinates for the tool in the FlowView.
         :type pos: list(float, float)
         """
-        flow = comp.CurrentFrame.FlowView
+        flow = self.comp().CurrentFrame.FlowView
         flow.SetPos(self._reference, *pos)
 
     # region inputs
@@ -567,10 +639,40 @@ class Tool(PyObject):
             for output in self.outputs():
                 output.disconnect()
 
-    # TODO: Implement 'Tool.connections()'
+    def connections_iter(self, inputs=True, outputs=True):
+        """ Yield each Input and Output connection for this Tool instance.
+
+        Each individual connection is yielded in the format: `(Output, Input)`
+
+        :param inputs: If True include the inputs of this Tool, else they are excluded.
+        :param outputs: If True include the outputs of this Tool, else they are excluded.
+        :yield: (Output, Input) representing a connection to or from this Tool.
+        """
+        if inputs:
+            for input in self.inputs():
+                connected_output = input.get_connected_output()
+                if connected_output:
+                    yield (connected_output, input)
+
+        if outputs:
+            for output in self.outputs():
+                connected_inputs = output.get_connected_inputs()
+                if connected_inputs:
+                    for connected_input in connected_inputs:
+                        yield (output, connected_input)
+
     def connections(self, inputs=True, outputs=True):
-        """ Return all Connections of Inputs and Outputs of this Tools """
-        raise NotImplementedError()
+        """ Return all Input and Output connections of this Tools.
+
+        Each individual connection is a 2-tuple in the list in the format: `(Output, Input)`
+        For example:
+            `[(Output, Input), (Output, Input), (Output, Input)]`
+
+        :param inputs: If True include the inputs of this Tool, else they are excluded.
+        :param outputs: If True include the outputs of this Tool, else they are excluded.
+        :return: A list of 2-tuples (Output, Input) representing each connection to or from this Tool.
+        """
+        return list(self.connections_iter(inputs=inputs, outputs=outputs))
     # endregion
 
     def rename(self, name):
@@ -646,6 +748,9 @@ class Tool(PyObject):
     def set_text_color(self, color):
         """ Sets the Tool's text color.
 
+        Color should be assigned as a dictionary holding the RGB values between 0-1, like:
+            {"R": 1, "G": 0, "B": 0}
+
         Example
             >>> tool.set_text_color({'R':0.5, 'G':0.1, 'B': 0.0})
             >>> tool.set_text_color(None)
@@ -665,10 +770,32 @@ class Tool(PyObject):
         """
         self._reference.TileColor = color
 
-    # TODO: Implement `Tool.get_input(id)` or something similar to easily retrieve a specific input (or list_input()?)
-    # TODO: Implement `Tool.get_output(id)` or something similar to easily retrieve a specific output
-    # TODO: Implement `Tool.has_keys()` to easily retrieve whether the tool has any keys
-    # TODO: Implement `Tool.remove_keys()` to easily remove all keys on all inputs
+    def get_keyframes(self):
+        """ Return a list of keyframe times, in order, for the tool only.
+
+        These are NOT the keyframes on Inputs of this tool!
+        Any animation splines or modifiers attached to the tool's inputs are not considered.
+
+        .. note::
+            Most Tools will return only the start and end of their valid region.
+            Certain types of tools and modifiers such as BezierSplines may return a longer list of keyframes.
+
+        :return: List of int values indicating frames.
+        :rtype: list
+        """
+        keyframes = self._reference.GetKeyFrames()
+        if keyframes:
+            return keyframes.values()
+        else:
+            return None
+
+    def __eq__(self, other):
+        if isinstance(other, Tool):
+            self.name() == other.name()
+        return False
+
+    def __hash__(self):
+        return hash(self.name())
 
 
 class Flow(PyObject):
@@ -784,10 +911,6 @@ class Link(PyObject):
         """ Return the Tool this Link belongs to """
         return Tool(self._reference.GetTool())
 
-    # TODO: Implement `Link.connections` if such method/implementation would make sense for both Input/Output
-    # def connections(self):
-    #     raise NotImplementError()
-
 
 class Input(Link):
     """ An Input is any attributes that can be set or connected to by the user on the incoming side of a tool.
@@ -866,7 +989,20 @@ class Input(Link):
         :return: List of int values indicating frames.
         :rtype: list
         """
-        return self._reference.GetKeyFrames().values()
+        keyframes = self._reference.GetKeyFrames()
+        if keyframes:
+            return keyframes.values()
+        else:
+            return None
+
+    def remove_keyframes(self, time=None, index=None):
+        """ Remove the keyframes on this Input (if any)
+        :param time:
+        :param index:
+        :return:
+        """
+        # TODO: Implement Input.remove_keyframes()
+        raise NotImplementedError()
 
     def is_connected(self):
         """ Return whether the Input is an incoming connection from an Output
