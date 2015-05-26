@@ -222,16 +222,50 @@ class Comp(PyObject):
     Here you can perform the global changes to the current composition.
     """
     _default_reference = comp
-
-    # TODO: Finish the `Comp` docstring documentations
-    # TODO: Implement the rest of the `Comp` methods.
+    # TODO: Implement the rest of the `Comp` methods and its documentations.
 
     def get_current_time(self):
+        """ Returns the current time in this composition.
+
+        :return: Current time.
+        :rtype: int
+        """
         return self._reference.CurrentTime
 
-    def get_selected_tools(self, node_type=None):
+    def get_tool_list(self, selected=False, node_type=None):
+        """ Returns the tool list of this composition.
+
+        :param selected: If True only selected Tools will be returned, otherwise all the Tools in the composition will
+                         be used.
+        :param node_type: If provided filter to only tools of this type.
+
+        :return: List of Tools
+        :rtype: list
+        """
         args = (node_type,) if node_type is not None else tuple()
-        return [Tool(x) for x in self._reference.GetToolList(True, *args).values()]
+        return [Tool(x) for x in self._reference.GetToolList(selected, *args).values()]
+
+    def get_selected_tools(self, node_type=None):
+        """ Returns the currently selected tools.
+
+        .. warning::
+            Fusion does NOT return the selected tool list in the order of selection!
+
+        :return: List of selected Tools
+        :rtype: list
+        """
+        return self.get_tool_list(True, node_type=node_type)
+
+    def current_frame(self):
+        """ Returns the currently active ChildFrame for this composition.
+
+        ..note ::
+            This does not return the current time, but a UI element.
+            To get the current time use `get_current_time()`
+
+        :return: The currently active ChildFrame for this Composition.
+        """
+        return self.CurrentFrame
 
     def get_active_tool(self):
         """ Return active tool.
@@ -288,10 +322,21 @@ class Comp(PyObject):
         return tool
 
     def copy(self, tools):
+        """ Copy a list of tools to the Clipboard.
+
+        The copied Tools can be pasted into the Composition by using its corresponding `paste` method.
+
+        :param tools: The Tools list to be copied to the clipboard
+        """
         return self._reference.Copy([tool._reference for tool in tools])
 
-    def paste(self, values=None):
-        args = tuple() if values is None else (values,)
+    def paste(self, settings=None):
+        """ Pastes a tool from the Clipboard or a settings table.
+
+        :param settings: If values provided it will be used as the settings table to be copied, instead of using the
+                       Comp's current clipboard.
+        """
+        args = tuple() if settings is None else (settings,)
         return self._reference.Paste(*args)
 
     def lock(self):
@@ -539,7 +584,8 @@ class Tool(PyObject):
         :return: This function returns two numeric values containing the X and Y co-ordinates of the tool.
         :rtype: list(float, float)
         """
-        flow = self.comp().CurrentFrame.FlowView
+        flow = self.comp().current_frame().FlowView
+        # possible optimization: self._reference.Comp.CurrentFrame.FlowView
         return flow.GetPosTable(self._reference).values()
 
     def set_pos(self, pos):
@@ -548,7 +594,8 @@ class Tool(PyObject):
         :param pos: Numeric values specifying the x and y co-ordinates for the tool in the FlowView.
         :type pos: list(float, float)
         """
-        flow = self.comp().CurrentFrame.FlowView
+        flow = self.comp().current_frame().FlowView
+        # possible optimization: self._reference.Comp.CurrentFrame.FlowView
         flow.SetPos(self._reference, *pos)
 
     # region inputs
