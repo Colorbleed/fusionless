@@ -578,6 +578,7 @@ class Tool(PyObject):
     You can use this object to perform changes to a single tool (or make connections with another) or query information.
     For example renaming, deleting, connecting and retrieving its inputs/outputs.
     """
+
     def get_pos(self):
         """ This function will return the X and Y position this tool in the FlowView.
 
@@ -1210,7 +1211,75 @@ class Parameter(PyObject):
 
 
 class Image(Parameter):
-    pass
+    """ An Image parameter object.
+
+    For example the Image output from a Tool.
+    """
+    def width(self):
+        """ Return the width in pixels for the current output, this could be for the current proxy resolution.
+        :return: Actual horizontal size, in pixels
+        """
+        return self._reference.Width
+
+    def height(self):
+        """ Return the height in pixels for the current output, this could be for the current proxy resolution.
+        :return: Actual horizontal size, in pixels
+        """
+        return self._reference.Height
+
+    def original_width(self):
+        """
+        :return: Unproxied horizontal size, in pixels.
+        """
+        return self._reference.OriginalWidth
+
+    def original_height(self):
+        """
+        :return: Unproxied vertical size, in pixels.
+        """
+        return self._reference.OriginalHeight
+
+    def depth(self):
+        """ Image depth indicator (not in bits)
+        :return: Image depth
+        """
+        return self._reference.Depth
+
+    def x_scale(self):
+        """
+        :return: Pixel X Aspect
+        """
+        return self._reference.XScale
+
+    def y_scale(self):
+        """
+        :return: Pixel Y Aspect
+        """
+        return self._reference.YScale
+
+    def x_offset(self):
+        """
+        :return: X Offset, in pixels
+        """
+        return self._reference.XOffset
+
+    def y_offset(self):
+        """
+        :return: Y Offset, in pixels
+        """
+        return self._reference.YOffset
+
+    def field(self):
+        """
+        :return: Field indicator
+        """
+        return self._reference.Field
+
+    def proxy_scale(self):
+        """
+        :return: Image proxy scale multiplier.
+        """
+        return self._reference.ProxyScale
 
 
 class TransformMatrix(Parameter):
