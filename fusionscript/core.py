@@ -1205,9 +1205,28 @@ class Output(Link):
     # TODO: implement `Output.ShowDiskCacheDlg`     Displays the Cache-To-Disk dialog for user interaction
 
 
+class Preview(Input):
+    # TODO: implement Preview class:
+    # Reference: http://www.steakunderwater.com/VFXPedia/96.0.243.189/index6ffe-2.html?title=Eyeon:Script/Reference/Applications/Fusion/Classes/Preview
+
+
+class GLPreview(Preview):
+    def view(self):
+        """
+        :return: The attached GLView object
+        """
+        return self.View
+
+
 class Parameter(PyObject):
     """ Base class for all parameter (values) types """
-    pass
+    def get_metadata(self):
+        """ Dictionary of data about this parameter. """
+        return self._reference.Metadata
+
+    def set_metadata(self, md):
+        """ Set the metadata dictionary of data for this parameter. """
+        self._reference.set_data('Metadata', md)
 
 
 class Image(Parameter):
