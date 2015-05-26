@@ -2,13 +2,10 @@
     Contains the main `PyNode` base class.
     And for now also all its derived classes.
 
-    Note that this package is an early release (consider it pre-alpha public development).
-    Here's a community-built list of Fusion's built-in classes:
+    ### Reference
+
+    For a community-built class list of Fusion's built-in classes:
     http://www.steakunderwater.com/VFXPedia/96.0.243.189/index8c76.html?title=Eyeon:Script/Reference/Applications/Fusion/Classes
-
-    Most of the methods and class types available in Fusion will still have to be added and implemented in this
-    `fusionscript` package.
-
 """
 
 
@@ -690,20 +687,20 @@ class Tool(PyObject):
     def delete(self):
         """ Removes the tool from the composition.
 
-        Note:
-        This also releases the handle to the Fusion Tool object, setting it to nil.
-        This directly invalidates this Tool instance.
+        .. note::
+            This also releases the handle to the Fusion Tool object, setting it to nil.
+            This directly invalidates this Tool instance.
         """
         self._reference.Delete()
 
     def refresh(self):
         """ Refreshes the tool, showing updated user controls.
 
-        Note:
-        Internally calling Refresh in Fusion will invalidate the handle to internal object this tool references.
-        You have to save the new handle that is returned (even though the documentation above says nothing is returned).
-        Calling this function on this Tool will invalidate other Tool instances referencing this same object.
-        But it will update the reference in this instance on which the function call is made.
+        .. note::
+            Internally calling Refresh in Fusion will invalidate the handle to internal object this tool references.
+            You'd have to save the new handle that is returned (even though the documentation says nothing is returned).
+            Calling this function on this Tool will invalidate other Tool instances referencing this same object.
+            But it will update the reference in this instance on which the function call is made.
         """
         new_ref = self._reference.Refresh()
         self._reference = new_ref
@@ -742,7 +739,11 @@ class Tool(PyObject):
         return Comp(self._reference.Composition)
 
     def get_text_color(self):
-        """ Gets the Tool's text color. """
+        """ Gets the Tool's text color.
+
+        :rtype: dict
+        :return: The Tool's current text color.
+        """
         return self._reference.TextColor
 
     def set_text_color(self, color):
@@ -758,7 +759,11 @@ class Tool(PyObject):
         self._reference.TextColor = color
 
     def get_tile_color(self):
-        """ Gets the Tool's tile color. """
+        """ Gets the Tool's tile color.
+
+        :rtype: dict
+        :return: The Tool's current tile color.
+        """
         return self._reference.TileColor
 
     def set_tile_color(self, color):
