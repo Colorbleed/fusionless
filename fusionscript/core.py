@@ -1208,6 +1208,7 @@ class Output(Link):
 class Preview(Input):
     # TODO: implement Preview class:
     # Reference: http://www.steakunderwater.com/VFXPedia/96.0.243.189/index6ffe-2.html?title=Eyeon:Script/Reference/Applications/Fusion/Classes/Preview
+    pass
 
 
 class GLPreview(Preview):
