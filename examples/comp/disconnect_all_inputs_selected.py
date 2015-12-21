@@ -1,9 +1,11 @@
+"""Disconnect all inputs for selected tools"""
+
 import fusionscript as fu
 import fusionscript.context as fuCtx
 
-with fuCtx.LockAndUndoChunk("Disconnect inputs"):
+c = fu.Comp()
+with fuCtx.lock_and_undo_chunk(c, "Disconnect inputs"):
 
-    c = fu.Comp()
     for tool in c.get_selected_tools():
         for input in tool.inputs():
             input.disconnect()

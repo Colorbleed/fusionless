@@ -1,43 +1,32 @@
 """ A set of Context managers to provide a simple and safe way to manage Fusion's context.
 
     Example
-        >>> with LockComp():
+        >>> with lock_comp():
         >>>     print "Everything in here is done while the composition is locked."
 
 """
 
+import contextlib
 
-class LockComp(object):
-    def __init__(self, undoQueueName="Script CMD"):
-        # Lock flow
-        comp.Lock()
+@contextlib.contextmanager
+def lock_comp(comp):
+    comp.lock()
+    try:
+        yield
+    finally:
+        comp.unlock()
 
-    def __enter__(self):
-        return None
-
-    def __exit__(self, type, value, traceback):
-        comp.Unlock()
-
-
-class UndoChunk(object):
-    def __init__(self, undoQueueName="Script CMD"):
-        self._name = undoQueueName
-
-    def __enter__(self):
-        comp.StartUndo(self._name)
-
-    def __exit__(self, type, value, traceback):
-        comp.EndUndo(True)
+@contextlib.contextmanager
+def undo_chunk(comp, undoQueueName="Script CMD"):
+    comp.start_undo(undoQueueName)
+    try:
+        yield
+    finally:
+        comp.end_undo()
 
 
-class LockAndUndoChunk(object):
-    def __init__(self, undoQueueName="Script CMD"):
-        self._name = undoQueueName
-
-    def __enter__(self):
-        comp.Lock()
-        comp.StartUndo(self._name)
-
-    def __exit__(self, type, value, traceback):
-        comp.EndUndo(True)
-        comp.Unlock()
+@contextlib.contextmanager
+def lock_and_undo_chunk(comp, undoQueueName="Script CMD"):
+    with lock_comp(comp):
+        with undo_chunk(comp, undoQueueName):
+            yield
