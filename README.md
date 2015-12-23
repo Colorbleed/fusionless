@@ -51,12 +51,12 @@ For more example see the *examples* directory in the repository.
 
 ##### PeyeonScript
 
-Getting the fusionscript package working should be pretty trivial, though
-there's one cumbersome dependency: **PeyeonScript**. 
+It's trivial to install fusionscript though there's one cumbersome dependency: 
+*PeyeonScript*. 
 
-To get any access to 
-Fusion's scripting in Python you need that package. Unfortunately distribution
-of it is sparse, so [here]'s a topic that has a working download link. All
-you need is the installer for your Python version and the Peyeonscript seems
-to work fine with newer versions of Fusion. (Not sure about upcoming 8)
+To get any access to Fusion's scripting in Python you need that package. 
+Unfortunately distribution of it is sparse, so [here](http://www.steakunderwater.com/wesuckless/viewtopic.php?t=387)'s a topic that has a 
+working download link. All you need is the installer for your Python version 
+and the Peyeonscript seems to work fine with newer versions of Fusion. 
+(Not sure about upcoming 8)
 
