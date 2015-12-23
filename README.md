@@ -37,8 +37,8 @@ sys.path.append('path/to/fusionscript')
 import fusionscript
 ```
 
-If no errors have occured you should be able to use the library. For example
-add a blur tool to the currently active open composition.
+If no errors occured you should be able to use fusionscript. For example
+add a blur tool to the currently active comp:
 
 ```python
 import fusionscript
@@ -47,7 +47,7 @@ current_comp = fusionscript.Comp()
 current_comp.create_tool("Blur")
 ```
 
-For more example see the *examples* directory in the repository.
+For more examples see the *examples* directory in the repository.
 
 ##### PeyeonScript
 
