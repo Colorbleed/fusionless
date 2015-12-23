@@ -1,30 +1,33 @@
 """
-    Contains the main `PyNode` base class.
-    And for now also all its derived classes.
+Contains the main `PyNode` base class and its derived classes.
 
-    ### Reference
+### Reference
 
-    For a community-built class list of Fusion's built-in classes:
-    http://www.steakunderwater.com/VFXPedia/96.0.243.189/index8c76.html?title=Eyeon:Script/Reference/Applications/Fusion/Classes
+For a community-built class list of Fusion's built-in classes:
+http://www.steakunderwater.com/VFXPedia/96.0.243.189/index8c76.html?title=Eyeon:Script/Reference/Applications/Fusion/Classes
 """
 
 
 class PyObject(object):
     """ This is the base class for all classes referencing Fusion's classes.
 
-    Upon initialization of any PyObject class it checks whether the referenced data is of the correct type using
-    Python's special `__new__` method. This way we convert the instance to correct class type based on the internal
-    Fusion type.
+    Upon initialization of any PyObject class it checks whether the referenced
+    data is of the correct type usingbPython's special `__new__` method.
 
-    The `PyObject` is *fusionscript*'s class representation of Fusion's internal Object class.
-    All the other classes representing Fusion objects are derived from PyObject.
+    This way we convert the instance to correct class type based on the
+    internal Fusion type.
+
+    The `PyObject` is *fusionscript*'s class representation of Fusion's
+    internal Object class. All the other classes representing Fusion objects
+    are derived from PyObject.
 
     Example
         >>> node = PyObject(comp)
         >>> print type(node)
         >>> # Comp()
 
-    At any time you can access Fusion's python object from the instance using the `_reference` attribute.
+    At any time you can access Fusion's python object from the instance using
+    the `_reference` attribute.
 
     Example
         >>> node = PyObject()
@@ -36,9 +39,11 @@ class PyObject(object):
     _default_reference = None
 
     def __new__(cls, *args, **kwargs):
-        """ This is where the magic happens that automatically maps any of the PyNode objects to the correct class type.
+        """Convert the class instantiation to the correct type.
 
-        :rtype: cls
+        This is where the magic happens that automatically maps any of the
+        PyNode objects to the correct class type.
+
         """
 
         reference = args[0] if args else None
@@ -46,23 +51,33 @@ class PyObject(object):
             return reference
         elif reference is None:           # if no arguments assume reference to default type for cls (if any)
             if cls._default_reference is not None:
-                reference = cls._default_reference
+                reference = cls._default_reference()
+                if reference is None:
+                    raise RuntimeError("")
             else:
-                raise ValueError("Can't instantiate a PyObject with a reference to None")
+                raise ValueError("Can't instantiate a PyObject with a "
+                                 "reference to None")
 
-        # Acquire an attribute to check for type (start prefix)
-        # TODO: Check if could be optimized (micro-optimization) by getting something that returns less values or \
-        #       might already be retrievable from the PyRemoteObject.
-
-        # Check if the reference is a PyRemoteObject. Since we don't have access to the class type that fusion returns
-        # outside of Fusion we use a hack based on its name
-        if type(reference).__name__ != 'PyRemoteObject':
-            raise TypeError("Reference is not of type PyRemoteObject but {0}".format(type(reference).__name__))
+        # Python crashes whenever you perform `type()` or `dir()` on the
+        # PeyeonScript.scripapp() retrieved applications. As such we try to
+        # get the attributes before that check before type-checking in case
+        # of errors.
+        attrs = None
+        try:
+            attrs = reference.GetAttrs()
+        except AttributeError:
+            # Check if the reference is a PyRemoteObject.
+            # Since we don't have access to the class type that fusion returns
+            # outside of Fusion we use a hack based on its name
+            if type(reference).__name__ != 'PyRemoteObject':
+                raise TypeError("Reference is not of type PyRemoteObject "
+                                "but {0}".format(type(reference).__name__))
 
         newcls = None
-        attrs = reference.GetAttrs()
         if attrs:
-            # Comp, Tool, Input, Output, View, etc. all return attributes that define its type
+            # Acquire an attribute to check for type (start prefix)
+            # Comp, Tool, Input, Output, View, etc. all return attributes
+            # that define its type
             data_type = next(iter(attrs))
 
             # Define the new class type
@@ -76,20 +91,25 @@ class PyObject(object):
                 newcls = Output
             elif data_type.startswith("VIEW"):
                 newcls = Flow
+            elif data_type.startswith("FUSION"):
+                newcls = Fusion
 
         else:
-            # Image (output value) does not return attributes from GetAttrs() so we use some data from the PyRemoteObject
+            # Image (output value) does not return attributes from GetAttrs()
+            # so we use some data from the PyRemoteObject
             str_data_type = str(reference).split(' ', 1)[0]
 
             if str_data_type == "Image":
                 newcls = Image
 
         # Ensure we convert to a type preferred by the user
-        # eg. currently Tool() would come out as Comp() since no arguments are provided.
-        #     so instead we provide a TypeError() to be clear in those instances.
+        # eg. Tool() would come out as Comp() since no arguments are provided.
+        #     so instead we raise a TypeError() to be clear in those cases.
         if cls is not PyObject:
             if not issubclass(newcls, cls):
-                raise TypeError("PyObject did not convert to preferred type. '{0}' is not an instance of '{1}'".format(newcls, cls))
+                raise TypeError("PyObject did not convert to preferred "
+                                "type. '{0}' is not an instance "
+                                "of '{1}'".format(newcls, cls))
 
         # Instantiate class and return
         if newcls:
@@ -221,8 +241,15 @@ class Comp(PyObject):
 
     Here you can perform the global changes to the current composition.
     """
-    _default_reference = comp
     # TODO: Implement the rest of the `Comp` methods and its documentations.
+
+    @staticmethod
+    def _default_reference():
+        """Fallback for the default reference"""
+        try:
+            return comp   # this would be accessible within Fusion
+        except:
+            return None
 
     def get_current_time(self):
         """ Returns the current time in this composition.
@@ -1205,29 +1232,9 @@ class Output(Link):
     # TODO: implement `Output.ShowDiskCacheDlg`     Displays the Cache-To-Disk dialog for user interaction
 
 
-class Preview(Input):
-    # TODO: implement Preview class:
-    # Reference: http://www.steakunderwater.com/VFXPedia/96.0.243.189/index6ffe-2.html?title=Eyeon:Script/Reference/Applications/Fusion/Classes/Preview
-    pass
-
-
-class GLPreview(Preview):
-    def view(self):
-        """
-        :return: The attached GLView object
-        """
-        return self.View
-
-
 class Parameter(PyObject):
     """ Base class for all parameter (values) types """
-    def get_metadata(self):
-        """ Dictionary of data about this parameter. """
-        return self._reference.Metadata
-
-    def set_metadata(self, md):
-        """ Set the metadata dictionary of data for this parameter. """
-        self._reference.set_data('Metadata', md)
+    pass
 
 
 class Image(Parameter):
@@ -1307,9 +1314,28 @@ class TransformMatrix(Parameter):
 
 
 class Fusion(PyObject):
-    _default_reference = fusion
+
+    @staticmethod
+    def _default_reference():
+        """Fallback for the default reference"""
+        try:
+            return fusion   # this would be accessible within Fusion
+        except:
+            return None
+
     # TODO: Implement Fusion methods: http://www.steakunderwater.com/VFXPedia/96.0.243.189/index5522.html?title=Eyeon:Script/Reference/Applications/Fusion/Classes/Fusion
+    def new_comp(self):
+        """Creates a new composition and sets it as the currently active one"""
+        self._reference.NewComp()
+        comp = self._reference.GetCurrentComp()
+        return Comp(comp)
+
+    def __repr__(self):
+        return '{0}("{1}")'.format(self.__class__.__name__,
+                                   str(self._reference))
+
 
 
 class Registry(PyObject):
     """ Represents a type of object within Fusion """
+    pass
