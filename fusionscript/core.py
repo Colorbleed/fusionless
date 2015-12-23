@@ -47,9 +47,11 @@ class PyObject(object):
         """
 
         reference = args[0] if args else None
-        if isinstance(reference, cls):  # if argument provided is already of correct class type return it
+        # if argument provided is already of correct class type return it
+        if isinstance(reference, cls):
             return reference
-        elif reference is None:           # if no arguments assume reference to default type for cls (if any)
+        # if no arguments assume reference to default type for cls (if any)
+        elif reference is None:
             if cls._default_reference is not None:
                 reference = cls._default_reference()
                 if reference is None:
@@ -581,16 +583,18 @@ class Comp(PyObject):
 
         Use this method to determine whether a composition object is currently playing.
 
-        :rtype: bool
+        Returns:
+             bool: Whether comp is currently being played.
         """
         return self._reference.IsPlaying()
 
     def is_locked(self):
-        """ Returns True if the comp is being played.
+        """ Returns True if the comp is locked.
 
         Use this method to see whether a composition is locked or not.
 
-        :rtype: bool
+        Returns:
+             bool: Whether comp is currently locked.
         """
         return self._reference.IsPlaying()
 
@@ -734,78 +738,102 @@ class Tool(PyObject):
                         yield (output, connected_input)
 
     def connections(self, inputs=True, outputs=True):
-        """ Return all Input and Output connections of this Tools.
+        """Return all Input and Output connections of this Tools.
 
-        Each individual connection is a 2-tuple in the list in the format: `(Output, Input)`
+        Each individual connection is a 2-tuple in the list in the format:
+            `(Output, Input)`
+
         For example:
             `[(Output, Input), (Output, Input), (Output, Input)]`
 
-        :param inputs: If True include the inputs of this Tool, else they are excluded.
-        :param outputs: If True include the outputs of this Tool, else they are excluded.
-        :return: A list of 2-tuples (Output, Input) representing each connection to or from this Tool.
+        Args:
+            inputs (bool): If True include the inputs of this Tool, else they
+                are excluded.
+            outputs (bool): If True include the outputs of this Tool, else they
+                are excluded.
+
+        Returns:
+            A list of 2-tuples (Output, Input) representing each connection to
+            or from this Tool.
         """
         return list(self.connections_iter(inputs=inputs, outputs=outputs))
     # endregion
 
     def rename(self, name):
-        """ Sets the name for this Tool to `name`.
+        """Sets the name for this Tool to `name`.
 
-        :param name: The name to change to.
-        :type name: str
+        Args:
+            name (str): The new name to change to.
+
         """
         self._reference.SetAttrs({'TOOLB_NameSet': True, 'TOOLS_Name': name})
 
     def clear_name(self):
-        """ Clears the user-defined name for this tool and resets it to automated internal name. """
+        """Clears user-defined name reverting to automated internal name."""
         self._reference.SetAttrs({'TOOLB_NameSet': False, 'TOOLS_Name': ''})
 
     def delete(self):
-        """ Removes the tool from the composition.
+        """Removes the tool from the composition.
 
         .. note::
             This also releases the handle to the Fusion Tool object, setting it to nil.
             This directly invalidates this Tool instance.
+
         """
         self._reference.Delete()
 
     def refresh(self):
-        """ Refreshes the tool, showing updated user controls.
+        """Refreshes the tool, showing updated user controls.
 
         .. note::
-            Internally calling Refresh in Fusion will invalidate the handle to internal object this tool references.
-            You'd have to save the new handle that is returned (even though the documentation says nothing is returned).
-            Calling this function on this Tool will invalidate other Tool instances referencing this same object.
-            But it will update the reference in this instance on which the function call is made.
+            Internally calling Refresh in Fusion will invalidate the handle to
+            internal object this tool references. You'd have to save the new
+            handle that is returned (even though the documentation says nothing
+            is returned). Calling this function on this Tool will invalidate
+            other Tool instances referencing this same object. But it will
+            update the reference in this instance on which the function call
+            is made.
+
         """
         new_ref = self._reference.Refresh()
         self._reference = new_ref
 
     def parent(self):
-        """ Return the parent Group this Tool belongs to, if any. """
+        """Return the parent Group this Tool belongs to, if any."""
         return self._reference.ParentTool
 
     def save_settings(self, path=None):
-        """ Saves the tool's settings to a dict, or to a .setting file specified by the path argument.
+        """Saves the tool's settings to a dict, or to a .setting file
+        specified by the path argument.
 
         :param path: A valid path to the location where a .setting file will be saved.
         :type path: str
         :return:
-            If a path is given, the tool's settings will be saved to that file, and a boolean is returned to indicate success.
-            If no path is given, SaveSettings() will return a table of the tool's settings instead.
+            If a path is given, the tool's settings will be saved to that file,
+            and a boolean is returned to indicate success.
+            If no path is given, SaveSettings() will return a table of the
+            tool's settings instead.
+
         """
         args = tuple() if path is None else (path,)
         return self._reference.SaveSettings(*args)
 
     def load_settings(self, settings):
-        """ The LoadSettings function is used to load .setting files or tables into a tool.
+        """Loads .setting files or settings dict into the tool.
 
-        This is potentially useful for any number of applications, such as loading curve data into fusion, for which
-        there is currently no simple way to script interactively in Fusion. Beyond that, it could possibly be used to
-        sync updates to tools over project management systems.
+        This is potentially useful for any number of applications, such as
+        loading curve data into fusion, for which there is currently no simple
+        way to script interactively in Fusion. Beyond that, it could possibly
+        be used to sync updates to tools over project management systems.
 
-        :param settings: The path to a valid .setting file or a settings dictionary.
-                         A valid table of settings, such as produced by SaveSettings() or read from a .setting file.
-        :return: None
+        Args:
+            settings (str, dict): The path to a valid .setting file or a
+            settings dict. A valid dict of settings, such as produced by
+            SaveSettings() or read from a .setting file.
+
+        Returns:
+            None
+
         """
         self._reference.LoadSettings(settings)
 
@@ -1041,33 +1069,38 @@ class Input(Link):
     def get_connected_output(self):
         """ Returns the output that is connected to a given input.
 
-        :return: Output this Input is connected to if any, else None.
+        Returns:
+            Output: The Output this Input is connected to if any, else None.
+
         """
         other = self._reference.GetConnectedOutput()
         if other:
             return Output(other)
 
     def get_expression(self):
-        """ Returns the expression string shown within the Input's Expression field.
+        """Return the expression string shown in the Input's Expression field.
 
-        :return: Returns the simple expression string from a given input if any, or an empty string if not.
-        :rtype: str
+        Returns:
+            str: the simple expression string from a given input if any else
+                an empty string is returned.
+
         """
         return self._reference.GetExpression()
 
     def set_expression(self, expression):
-        """ Set the Expression field for the Input to the given string.
+        """Set the Expression field for the Input to the given string.
 
-        :param expression: A simple expression string.
-        :type expression: str
+        Args:
+            expression (str): An expression string.
+
         """
         self._reference.SetExpression(expression)
 
     def get_keyframes(self):
-        """ Return the times at which this Input has keys.
+        """Return the times at which this Input has keys.
 
-        :return: List of int values indicating frames.
-        :rtype: list
+        Returns:
+            list: List of int values indicating frames.
         """
         keyframes = self._reference.GetKeyFrames()
         if keyframes:
@@ -1076,27 +1109,29 @@ class Input(Link):
             return None
 
     def remove_keyframes(self, time=None, index=None):
-        """ Remove the keyframes on this Input (if any)
-        :param time:
-        :param index:
-        :return:
+        """Remove the keyframes on this Input (if any)
+
         """
         # TODO: Implement Input.remove_keyframes()
         raise NotImplementedError()
 
     def is_connected(self):
-        """ Return whether the Input is an incoming connection from an Output
+        """Return whether the Input is an incoming connection from an Output
 
-        :return: True if connected, otherwise False
-        :rtype: bool
+        Returns:
+             bool: True if connected, otherwise False
+
         """
         return bool(self._reference.GetConnectedOutput())
 
     def data_type(self):
-        """ Returns the type of Parameter (e.g. Number, Point, Text, Image) this Input accepts.
+        """Returns the type of Parameter
 
-        :return: Type of parameter.
-        :rtype: str
+        For example the (Number, Point, Text, Image) types this Input accepts.
+
+        Returns:
+            str: Type of parameter.
+
         """
         return self._reference.GetAttrs()['OUTS_DataType']
 
