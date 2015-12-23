@@ -1349,6 +1349,13 @@ class TransformMatrix(Parameter):
 
 
 class Fusion(PyObject):
+    """The Fusion application.
+
+    Contains all functionality to interact with the global Fusion sessions.
+    For example this would allow you to retrieve the available compositions
+    that are currently open or open a new one.
+    """
+    # TODO: Implement Fusion methods: http://www.steakunderwater.com/VFXPedia/96.0.243.189/index5522.html?title=Eyeon:Script/Reference/Applications/Fusion/Classes/Fusion
 
     @staticmethod
     def _default_reference():
@@ -1358,10 +1365,15 @@ class Fusion(PyObject):
         except:
             return None
 
-    # TODO: Implement Fusion methods: http://www.steakunderwater.com/VFXPedia/96.0.243.189/index5522.html?title=Eyeon:Script/Reference/Applications/Fusion/Classes/Fusion
     def new_comp(self):
         """Creates a new composition and sets it as the currently active one"""
+        # TODO: Need fix: During NewComp() Fusion seems to be temporarily unavailable
         self._reference.NewComp()
+        comp = self._reference.GetCurrentComp()
+        return Comp(comp)
+
+    def get_current_comp(self):
+        """Return the currently active comp in this Fusion instance"""
         comp = self._reference.GetCurrentComp()
         return Comp(comp)
 
