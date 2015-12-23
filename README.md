@@ -56,7 +56,7 @@ It's trivial to install fusionscript though there's one cumbersome dependency:
 
 To get any access to Fusion's scripting in Python you need that package. 
 Unfortunately distribution of it is sparse, so [here](http://www.steakunderwater.com/wesuckless/viewtopic.php?t=387)'s a topic that has a 
-working download link. All you need is the installer for your Python version 
-and the Peyeonscript seems to work fine with newer versions of Fusion. 
-(Not sure about upcoming 8)
+working download link. All you need is the installer for your Python version.
+Peyeonscript (for 6+) seems to work fine with newer versions of Fusion (6.4 or 7+). 
+Still need to test under Fusion 8 beta whether it works there as well.
 
