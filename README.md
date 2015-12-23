@@ -27,7 +27,7 @@ The **fusionscript** package has a dependency on PeyeonScript so ensure you've
 it installed and available to the `PYTHONPATH` as well. (See below for more 
 info on PeyeonScript)
 
-For example to quickly give it a spin run this in Fusion (Python):
+To quickly give **fusionscript** a spin run this in Fusion (Python):
 
 ```python
 fusionscript_dir = "path/to/fusionscript" # <- set the path to fusionscript
