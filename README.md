@@ -23,9 +23,9 @@ It's time for that change. Now.
 
 ### Installation
 
-The **fusionscript** package has a dependency on [PeyeonScript](#PeyeonScript) 
-so ensure you've that under your `PYTHONPATH` as well. (See below for more info on
-PeyeonScript)
+The **fusionscript** package has a dependency on PeyeonScript so ensure you've 
+it installed and available to the `PYTHONPATH` as well. (See below for more 
+info on PeyeonScript)
 
 For example to quickly give it a spin run this in Fusion (Python):
 
