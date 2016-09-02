@@ -7,6 +7,8 @@ For a community-built class list of Fusion's built-in classes:
 http://www.steakunderwater.com/VFXPedia/96.0.243.189/index8c76.html?title=Eyeon:Script/Reference/Applications/Fusion/Classes
 """
 
+import sys
+
 
 class PyObject(object):
     """This is the base class for all classes referencing Fusion's classes.
@@ -255,10 +257,8 @@ class Comp(PyObject):
     @staticmethod
     def _default_reference():
         """Fallback for the default reference"""
-        try:
-            return comp   # this would be accessible within Fusion
-        except NameError:
-            return None
+        # this would be accessible within Fusion as "comp"
+        return getattr(sys.modules["__main__"], "comp", None)
 
     def get_current_time(self):
         """ Returns the current time in this composition.
@@ -1397,10 +1397,9 @@ class Fusion(PyObject):
     @staticmethod
     def _default_reference():
         """Fallback for the default reference"""
-        try:
-            return fusion   # this would be accessible within Fusion
-        except:
-            return None
+
+        # this would be accessible within Fusion as "fusion"
+        return getattr(sys.modules["__main__"], "fusion", None)
 
     def new_comp(self):
         """Creates a new composition and sets it as the currently active one"""
