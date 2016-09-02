@@ -1,5 +1,5 @@
 import unittest
-import fusionscript as fu
+import fusionless as fu
 
 
 class TestTools(unittest.TestCase):

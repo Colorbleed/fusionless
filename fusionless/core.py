@@ -9,7 +9,7 @@ http://www.steakunderwater.com/VFXPedia/96.0.243.189/index8c76.html?title=Eyeon:
 
 
 class PyObject(object):
-    """ This is the base class for all classes referencing Fusion's classes.
+    """This is the base class for all classes referencing Fusion's classes.
 
     Upon initialization of any PyObject class it checks whether the referenced
     data is of the correct type usingbPython's special `__new__` method.
@@ -33,6 +33,7 @@ class PyObject(object):
         >>> node = PyObject()
         >>> reference = node._reference
         >>> print reference
+        
     """
 
     _reference = None   # reference to PyRemoteObject

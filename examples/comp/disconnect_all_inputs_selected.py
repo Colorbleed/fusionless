@@ -1,7 +1,7 @@
 """Disconnect all inputs for selected tools"""
 
-import fusionscript as fu
-import fusionscript.context as fuCtx
+import fusionless as fu
+import fusionless.context as fuCtx
 
 c = fu.Comp()
 with fuCtx.lock_and_undo_chunk(c, "Disconnect inputs"):

@@ -1,4 +1,4 @@
-# fusionscript
+# fusionless
 Python in Black Magic Design's Fusion that sucks less.
 
 Similar to how **Pymel** tries to do Python the right way in Maya this is the same thing for Fusion.  
@@ -23,27 +23,27 @@ It's time for that change. Now.
 
 ### Installation
 
-The **fusionscript** package has a dependency on PeyeonScript so ensure you've 
+The **fusionless** package has a dependency on PeyeonScript so ensure you've 
 it installed and available to the `PYTHONPATH` as well. (See below for more 
 info on PeyeonScript)
 
-To quickly give **fusionscript** a spin run this in Fusion (Python):
+To quickly give **fusionless** a spin run this in Fusion (Python):
 
 ```python
-fusionscript_dir = "path/to/fusionscript" # <- set the path to fusionscript
+fusionless_dir = "path/to/fusionless" # <- set the path to fusionless
 
 import sys
-sys.path.append('path/to/fusionscript')
-import fusionscript
+sys.path.append('path/to/fusionless')
+import fusionless
 ```
 
-If no errors occured you should be able to use fusionscript. For example
+If no errors occured you should be able to use fusionless. For example
 add a blur tool to the currently active comp:
 
 ```python
-import fusionscript
+import fusionless
 
-current_comp = fusionscript.Comp()
+current_comp = fusionless.Comp()
 current_comp.create_tool("Blur")
 ```
 
@@ -51,7 +51,7 @@ For more examples see the *examples* directory in the repository.
 
 ##### PeyeonScript
 
-It's trivial to install fusionscript though there's one cumbersome dependency: 
+It's trivial to install fusionless though there's one cumbersome dependency: 
 *PeyeonScript*. 
 
 To get any access to Fusion's scripting in Python you need that package. 

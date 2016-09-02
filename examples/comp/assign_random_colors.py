@@ -1,4 +1,4 @@
-import fusionscript as fu
+import fusionless as fu
 import random
 
 

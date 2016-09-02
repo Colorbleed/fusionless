@@ -5,8 +5,11 @@ The standalone Python still needs access to the Peyeon
 
 """
 
-import PeyeonScript as eyeon
-
+try:
+    import PeyeonScript as bmd
+except ImportError:
+    import BlackmagicFusion as bmd
+    
 
 def _get_app(app, ip=None, timeout=0.1, uuid=None):
     """
@@ -29,7 +32,7 @@ def _get_app(app, ip=None, timeout=0.1, uuid=None):
     if uuid:
         args.append(uuid)
 
-    app = eyeon.scriptapp(*args)
+    app = bmd.scriptapp(*args)
     if not app:
         raise RuntimeError("Couldn't connect to application.")
 
@@ -57,4 +60,4 @@ def get_current_uuid():
         which can be used elsewhere to connect to exactly this application.
 
     """
-    return eyeon.getappuuid()
+    return bmd.getappuuid()

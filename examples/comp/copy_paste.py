@@ -1,4 +1,4 @@
-import fusionscript as fu
+import fusionless as fu
 
 comp = fu.Comp()
 tools = comp.get_selected_tools()
