@@ -56,7 +56,8 @@ class PyObject(object):
             if cls._default_reference is not None:
                 reference = cls._default_reference()
                 if reference is None:
-                    raise RuntimeError("")
+                    raise RuntimeError("No default reference for: "
+                                       "{0}".format(type(reference).__name__))
             else:
                 raise ValueError("Can't instantiate a PyObject with a "
                                  "reference to None")
@@ -221,19 +222,24 @@ class PyObject(object):
         return Comp(self._reference.Comp())
 
     def __getattr__(self, attr):
-        """ Allow access to Fusion's built-in methods on the reference directly.
+        """Allow access to Fusion's built-in methods on the reference directly.
 
-        .. note:: Since the normal behaviour is to raise a very confusing TypeError whenever an unknown method is called
-                  on the PyRemoteObject so we added a raise a more explanatory error if we retrieve unknown data.
+        .. note::
+            Since the normal behaviour is to raise a very confusing TypeError
+            whenever an unknown method is called on the PyRemoteObject so we
+            added a raise a more explanatory error if we retrieve unknown data.
+
         """
         result = getattr(self._reference, attr)
         if result is None:
-            raise AttributeError("{0} object has no attribute '{1}'".format(self, attr))
+            raise AttributeError("{0} object has no attribute "
+                                 "'{1}'".format(self, attr))
 
         return result
 
     def __repr__(self):
-        return '{0}("{1}")'.format(self.__class__.__name__, str(self._reference.Name))
+        return '{0}("{1}")'.format(self.__class__.__name__,
+                                   str(self._reference.Name))
 
     # TODO: Implement PyObject.GetApp
     # TODO: Implement PyObject.TriggerEvent
@@ -251,7 +257,7 @@ class Comp(PyObject):
         """Fallback for the default reference"""
         try:
             return comp   # this would be accessible within Fusion
-        except:
+        except NameError:
             return None
 
     def get_current_time(self):
@@ -424,7 +430,7 @@ class Comp(PyObject):
         """
         self._reference.StartUndo(name)
 
-    def end_undo(self, keep):
+    def end_undo(self, keep=True):
         """
         The `start_undo()` is always paired with an `end_undo()` call.
         Any changes made to the composition by the lines of script between `start_undo()` and `end_undo()` are stored as
@@ -1029,16 +1035,46 @@ class Input(Link):
     Because of the way node-graphs work any value that goes into a Tool required to process the information should
     result (in most scenarios) in a reproducible output under the same conditions.
     """
-    def get_value(self, time=None):
-        """ Get the value of this Input at the given time.
 
-            If time is provided the value is evaluated at that specific time, otherwise current time is used.
+    def __current_time(self):
+        # optimize over going through PyNodes (??)
+        # instead of: time = self.tool().comp().get_current_time()
+        return self._reference.GetTool().Composition.CurrentTime
+
+    def get_value(self, time=None):
+        """Get the value of this Input at the given time.
+
+        Arguments:
+            time (float): The time to set the value at. If None provided the
+                current time is used.
+
+        Returns:
+            A value directly from the internal input object.
+
         """
         if time is None:
-            time = self._reference.GetTool().Composition.CurrentTime # optimize over going through PyNodes (??)
-            # time = self.tool().comp().get_current_time()
+            time = self.__current_time()
 
         return self._reference[time]
+
+    def set_value(self, value, time=None):
+        """Set the value of the input at the given time.
+
+        Arguments:
+            time (float): The time to set the value at. If None provided the
+                currentt time is used.
+
+        """
+
+        if time is None:
+            time = self.__current_time()
+
+        # Setting boolean values doesn't work. So instead set an integer value
+        # allow settings checkboxes with True/False
+        if isinstance(value, bool):
+            value = int(value)
+
+        self._reference[time] = value
 
     def connect_to(self, output):
         """ Connect this Input to another Output setting an incoming connection for this tool.
