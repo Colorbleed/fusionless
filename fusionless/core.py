@@ -1069,10 +1069,46 @@ class Input(Link):
         if time is None:
             time = self.__current_time()
 
+        attrs = self.get_attrs()
+        data_type = attrs['INPS_DataType']
+
         # Setting boolean values doesn't work. So instead set an integer value
         # allow settings checkboxes with True/False
         if isinstance(value, bool):
             value = int(value)
+
+        # Convert float/integer to enum if datatype == "FuID"
+        elif isinstance(value, (int, float)) and data_type == "FuID":
+
+            # We must compare it with a float value. We add 1 to interpret
+            # as zero based indices. (Zero would be 1.0 in the fusion id
+            # dictionary, etc.)
+            v = float(value) + 1.0
+
+            enum_keys = ("INPIDT_MultiButtonControl_ID",
+                         "INPIDT_ComboControl_ID")
+            for enum_key in enum_keys:
+                if enum_key in attrs:
+                    enum = attrs[enum_key]
+                    if v in enum:
+                        value = enum[v]
+                        break
+
+        # Convert enum string value to its corresponding integer value
+        elif (isinstance(value, basestring) and
+                data_type != "Text" and
+                data_type != "FuID"):
+
+            enum_keys = ("INPST_MultiButtonControl_String",
+                         "INPIDT_MultiButtonControl_ID",
+                         "INPIDT_ComboControl_ID")
+            for enum_key in enum_keys:
+                if enum_key in attrs:
+                    enum = dict((str(key), value) for value, key in
+                                attrs[enum_key].items())
+                    if value in enum:
+                        value = enum[str(value)] - 1.0
+                        break
 
         self._reference[time] = value
 
@@ -1416,7 +1452,6 @@ class Fusion(PyObject):
     def __repr__(self):
         return '{0}("{1}")'.format(self.__class__.__name__,
                                    str(self._reference))
-
 
 
 class Registry(PyObject):
