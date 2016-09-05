@@ -452,60 +452,93 @@ class Comp(PyObject):
         self._reference.EndUndo(keep)
 
     def clear_undo(self):
-        """ Use this function to clear the undo/redo history for the composition. """
+        """Use this function to clear the undo/redo history for the
+        composition."""
         self._reference.ClearUndo()
 
     def save(self):
-        """ Save the composition. """
+        """Save the composition."""
         self._reference.Save()
 
     def play(self):
-        """ This function is used to turn on the play control in the playback controls of the composition. """
+        """This function is used to turn on the play control in the playback
+        controls of the composition.
+        """
         self._reference.Play()
 
     def stop(self):
-        """ This function is used to turn off the play control in the playback controls of the composition. """
+        """This function is used to turn off the play control in the playback
+        controls of the composition.
+        """
         self._reference.Stop()
+
+    def loop(self, mode):
+        """This function is used to turn on the loop control in the playback
+        controls of the composition.
+
+        Args:
+            mode (bool): Enables looping interactive playback.
+
+        Returns:
+            None
+
+        """
+        self._reference.Loop(mode)
 
     def render(self, wait_for_render, **kwargs):
         """ Renders the composition.
 
         Args:
-            wait_for_render (bool): Whether the script should wait for the render to complete or continue processing
-                                    once the render has begun. Defaults to False
+            wait_for_render (bool): Whether the script should wait for the
+                render to complete or continue processing once the render has
+                begun. Defaults to False.
 
         Kwargs:
-            start (int): The frame to start rendering at. Default: Comp's render start settings.
-            end (int): The frame to stop rendering at. Default: Comp's render end settings.
-            high_quality (bool): Render in High Quality (HiQ). Default True.
-            render_all (bool): Render all tools, even if not required by a saver. Default False.
-            motion_blur (bool): Do motion blur in render, where specified in tools. Default true.
+            start (int): The frame to start rendering at.
+                Default: Comp's render start settings.
+            end (int): The frame to stop rendering at.
+                Default: Comp's render end settings.
+            high_quality (bool): Render in High Quality (HiQ).
+                Default True.
+            render_all (bool): Render all tools, even if not required by a
+                saver. Default False.
+            motion_blur (bool): Do motion blur in render, where specified in
+                tools. Default true.
             size_type (int): Resize the output:
-                                -1. Custom (only used by PreviewSavers during a preview render)
+                                -1. Custom (only used by PreviewSavers during
+                                            preview render)
                                  0. Use prefs setting
                                  1. Full Size (default)
                                  2. Half Size
                                  3. Third Size
                                  4. Quarter Size
-            width (int): Width of result when doing a Custom preview (defaults to pref)
-            height (int): Height of result when doing a Custom preview (defaults to pref)
-            keep_aspect (bool): Maintains the frame aspect when doing a Custom preview.
-                                Defaults to Preview prefs setting.
-            step_render (bool): Render only 1 out of every X frames ("shoot on X frames") or render every frame.
-                                Defaults to False.
+            width (int): Width of result when doing a Custom preview
+                (defaults to pref)
+            height (int): Height of result when doing a Custom preview
+                (defaults to pref)
+            keep_aspect (bool): Maintains the frame aspect when doing a Custom
+                preview. Defaults to Preview prefs setting.
+            step_render (bool): Render only 1 out of every X frames ("shoot on
+                X frames") or render every frame. Defaults to False.
             steps (int): If step rendering, how many to step. Default 5.
-            use_network (bool): Enables rendering with the network. Default False.
-            groups (str): Use these network slave groups to render on (when net rendering). Default "all".
-            flags (number): Number specifying render flags, usually 0 (the default).
-                            Most flags are specified by other means, but a value of 262144 is used for preview renders.
-            tool (Tool): A tool to render up to. If this is specified only sections of the comp up to this tool will be
-                         rendered. eg you could specify comp.Saver1 to only render *up to* Saver1, ignoring any tools
-                         (including savers) after it.
-            frame_range (str): Describes which frames to render. (eg "1..100,150..180").
-                               Defaults to "Start".."End"
+            use_network (bool): Enables rendering with the network.
+                Defaults to False.
+            groups (str): Use these network slave groups to render on (when
+                net rendering). Default "all".
+            flags (number): Number specifying render flags, usually 0
+                (the default). Most flags are specified by other means, but a
+                value of 262144 is used for preview renders.
+            tool (Tool): A tool to render up to. If this is specified only
+                sections of the comp up to this tool will be rendered. eg you
+                could specify comp.Saver1 to only render *up to* Saver1,
+                ignoring any tools (including savers) after it.
+            frame_range (str): Describes which frames to render.
+                (eg "1..100,150..180"). Defaults to "Start".."End"
 
         Returns:
-            True if the composition rendered successfully, None if it failed to start or complete.
+            True if the composition rendered successfully, None if it failed
+            to start or complete.
+
         """
         # convert our 'Pythonic' keyword arguments to Fusion's internal ones.
         conversion = {'start': 'Start',
@@ -1028,12 +1061,17 @@ class Link(PyObject):
 
 
 class Input(Link):
-    """ An Input is any attributes that can be set or connected to by the user on the incoming side of a tool.
+    """An Input is any attribute that can be set or connected to by the user
+    on the incoming side of a tool.
 
-    .. note:: These are the input knobs in the Flow view, but also the input values inside the Control view for a Tool.
+    .. note::
+        These are the input knobs in the Flow view, but also the input values
+        inside the Control view for a Tool.
 
-    Because of the way node-graphs work any value that goes into a Tool required to process the information should
-    result (in most scenarios) in a reproducible output under the same conditions.
+    Because of the way node-graphs work any value that goes into a Tool
+    required to process the information should result (in most scenarios) in a
+    reproducible output under the same conditions.
+
     """
 
     def __current_time(self):
@@ -1113,15 +1151,22 @@ class Input(Link):
         self._reference[time] = value
 
     def connect_to(self, output):
-        """ Connect this Input to another Output setting an incoming connection for this tool.
+        """Connect an Output as incoming connection to this Input.
 
-        .. note:: This function behaves similarly to right clicking on a property, selecting Connect To, and selecting
-                  the property you wish to connect the input to. In that respect, if you try to connect non-similar
-                  data types (a path's value to a polygon's level, for instance) it will not connect the values.
-                  Such an action will yield NO error message.
+        .. note::
+            This function behaves similarly to right clicking on a property,
+            selecting Connect To, and selecting the property you wish to
+            connect the input to. In that respect, if you try to connect
+            non-similar data types (a path's value to a polygon's level, for
+            instance) it will not connect the values. Such an action will
+            yield NO error message.
 
-        :param output: The Output to connect to.
-        :type output: Output
+        Args:
+            output (Output): The output that should act as incoming connection.
+
+        Returns:
+            None
+
         """
 
         # disconnect
@@ -1136,7 +1181,7 @@ class Input(Link):
         self._reference.ConnectTo(output._reference)
 
     def disconnect(self):
-        """ Disconnect the Output this Input is connected to, if any. """
+        """Disconnect the Output this Input is connected to, if any."""
         self.connect_to(None)
 
     def get_connected_output(self):
@@ -1448,6 +1493,26 @@ class Fusion(PyObject):
         """Return the currently active comp in this Fusion instance"""
         comp = self._reference.GetCurrentComp()
         return Comp(comp)
+
+    @property
+    def build(self):
+        """Returns the build number of the current Fusion instance.
+
+        Returns:
+            float: Build number
+
+        """
+        return self._reference.Build
+
+    @property
+    def version(self):
+        """Returns the version of the current Fusion instance.
+
+        Returns:
+            float: Version number
+
+        """
+        return self._reference.Version
 
     def __repr__(self):
         return '{0}("{1}")'.format(self.__class__.__name__,
