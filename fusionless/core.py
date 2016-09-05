@@ -19,7 +19,7 @@ class PyObject(object):
     This way we convert the instance to correct class type based on the
     internal Fusion type.
 
-    The `PyObject` is *fusionscript*'s class representation of Fusion's
+    The `PyObject` is *fusionless*'s class representation of Fusion's
     internal Object class. All the other classes representing Fusion objects
     are derived from PyObject.
 
@@ -164,8 +164,9 @@ class PyObject(object):
             example a link to a page on Vfxpedia) and will override this tool's default help when the user presses F1
             (requires Fusion 6.31 or later). It's most useful for macros.
 
-            Example
-                >>> PyNode(comp).set_data('HelpPage', 'https://github.com/BigRoy/fusionscript')
+        Example
+            >>> Comp().set_data('HelpPage',
+            >>>                 'https://github.com/BigRoy/fusionless')
 
         :param name: This is the name of the attribute to set. As of 5.1, this name can be in "table.subtable" format,
                      to allow setting persistent data within subtables.
@@ -426,7 +427,7 @@ class Comp(PyObject):
         since no time will be spent rendering until the comp is unlocked.
 
         For convenience this is also available as a Context Manager as
-        `fusionscript.context.LockComp`.
+        `fusionless.context.LockComp`.
 
         """
         self._reference.Lock()
@@ -1580,5 +1581,5 @@ class Fusion(PyObject):
 
 
 class Registry(PyObject):
-    """ Represents a type of object within Fusion """
+    """Represents a Registry type of object within Fusion"""
     pass
