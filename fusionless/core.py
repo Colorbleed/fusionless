@@ -141,36 +141,50 @@ class PyObject(object):
     def set_data(self, name, value):
         """ Set persistent data on this object.
 
-        Persistent data is a very useful way to store names, dates, filenames, notes, flags, or anything else, in such a
-        way that they are permanently associated with this instance of the object, and are stored along with the object.
-        This data can be retrieved at any time by using `get_data()`.
+        Persistent data is a very useful way to store names, dates, filenames,
+        notes, flags, or anything else, in such a way that they are permanently
+        associated with this instance of the object, and are stored along with
+        the object. This data can be retrieved at any time by using
+        `get_data()`.
 
         The method of storage varies by object:
         - Fusion application:
-            SetData() called on the Fusion app itself will save its data in the  Fusion.prefs file, and will be
-            available whenever that copy of Fusion is running.
+            SetData() called on the Fusion app itself will save its data in the
+            Fusion.prefs file, and will be available whenever that copy of
+            Fusion is running.
 
         - Objects associated with a composition:
-            Calling SetData() on any object associated with a Composition will cause the data to be saved in the .comp
-            file, or in any settings files that may be saved directly from that object.
+            Calling SetData() on any object associated with a Composition will
+            cause the data to be saved in the .comp file, or in any settings
+            files that may be saved directly from that object.
 
         - Ephemeral objects not associated with composition:
-            Some ephemeral objects that are not associated with any composition and are not otherwise saved in any way,
-            may not have their data permanently stored at all, and the data will only persist as long as the object
-            itself does.
+            Some ephemeral objects that are not associated with any
+            composition and are not otherwise saved in any way, may not have
+            their data permanently stored at all, and the data will only
+            persist as long as the object itself does.
 
         .. note::
-            You can use SetData to add a key called HelpPage to any tool. Its value can be a URL to a web page (for
-            example a link to a page on Vfxpedia) and will override this tool's default help when the user presses F1
-            (requires Fusion 6.31 or later). It's most useful for macros.
+            You can use SetData to add a key called HelpPage to any tool.
+            Its value can be a URL to a web page (for example a link to a
+            page on Vfxpedia) and will override this tool's default help when
+            the user presses F1 (requires Fusion 6.31 or later).
+            It's most useful for macros.
 
         Example
             >>> Comp().set_data('HelpPage',
             >>>                 'https://github.com/BigRoy/fusionless')
 
-        :param name: This is the name of the attribute to set. As of 5.1, this name can be in "table.subtable" format,
-                     to allow setting persistent data within subtables.
-        :param value: This is the value to be recorded in the object's persistent data. It can be of almost any type.
+        Args:
+            name (str): The name the name of the attribute to set.
+                As of 5.1, this name can be in "table.subtable" format,
+                to allow setting persistent data within subtables.
+            value: This is the value to be recorded in the object's persistent
+                data. It can be of almost any type.
+
+        Returns:
+            None
+
         """
         self._reference.SetData(name, value)
 
@@ -295,7 +309,8 @@ class Comp(PyObject):
 
         """
         args = (node_type,) if node_type is not None else tuple()
-        return [Tool(x) for x in self._reference.GetToolList(selected, *args).values()]
+        return [Tool(x) for x in self._reference.GetToolList(selected,
+                                                             *args).values()]
 
     def get_selected_tools(self, node_type=None):
         """Returns the currently selected tools.
@@ -980,17 +995,20 @@ class Tool(PyObject):
         self._reference.TileColor = color
 
     def get_keyframes(self):
-        """ Return a list of keyframe times, in order, for the tool only.
+        """Return a list of keyframe times, in order, for the tool only.
 
         These are NOT the keyframes on Inputs of this tool!
-        Any animation splines or modifiers attached to the tool's inputs are not considered.
+        Any animation splines or modifiers attached to the tool's inputs are
+        not considered.
 
         .. note::
-            Most Tools will return only the start and end of their valid region.
-            Certain types of tools and modifiers such as BezierSplines may return a longer list of keyframes.
+            Most Tools will return only the start and end of their valid
+            region. Certain types of tools and modifiers such as BezierSplines
+            may return a longer list of keyframes.
 
-        :return: List of int values indicating frames.
-        :rtype: list
+        Returns:
+            list: List of int values indicating frames.
+
         """
         keyframes = self._reference.GetKeyFrames()
         if keyframes:
@@ -1011,15 +1029,19 @@ class Flow(PyObject):
     """ The Flow is the node-based overview of you Composition.
 
     Fusion's internal name: `FlowView`
+
     """
 
     def set_pos(self, tool, pos):
-        """ Reposition the given Tool to the position in the FlowView.
+        """Reposition the given Tool to the position in the FlowView.
 
-        :param tool: This argument should contain the tool that will be repositioned in the FlowView.
-        :type tool: Tool
-        :param pos: Numeric values specifying the x and y co-ordinates for the tool in the FlowView.
-        :type pos: list(float, float)
+        Args:
+            tool (Tool): The tool to reposition in the FlowView.
+            pos (tuple): The x and y co-ordinates to apply.
+
+        Returns:
+            None
+
         """
 
         if not isinstance(tool, Tool):
@@ -1028,12 +1050,14 @@ class Flow(PyObject):
         self._reference.SetPos(tool._reference, pos[0], pos[1])
 
     def get_pos(self, tool):
-        """ This function will return the X and Y position of a tool's tile in the FlowView.
+        """return the X and Y position of a tool's tile in the FlowView.
 
-        :param tool: This argument should contain the tool object the function will return the position of.
-        :type tool: Tool
-        :return: This function returns two numeric values containing the X and Y co-ordinates of the tool.
-        :rtype: list(float, float)
+        Args:
+            tool (Tool): The tool to return the position of.
+
+        Returns:
+            tuple: The x and y co-ordinates of the tool.
+
         """
         if not isinstance(tool, Tool):
             tool = Tool(tool)
@@ -1043,8 +1067,9 @@ class Flow(PyObject):
     def queue_set_pos(self, tool, pos):
         """ Queues the moving of a tool to a new position.
 
-        This function improves performance if you want to move a lot of tools at the same time.
-        For big graphs and loops this is preferred over `set_pos` and `get_pos`
+        This function improves performance if you want to move a lot of tools
+        at the same time. For big graphs and loops this is preferred over
+        `set_pos` and `get_pos`.
 
         Added in Fusion 6.1: FlowView::QueueSetPos()
 
@@ -1059,21 +1084,27 @@ class Flow(PyObject):
         """
         return self._reference.QueueSetPos(tool._reference, pos[0], pos[1])
 
-    def flush_set_pos_queue(self, tool, pos):
-        """ Moves all tools queued with `queue_set_pos`.
+    def flush_set_pos_queue(self):
+        """Moves all tools queued with `queue_set_pos`.
 
-        This function improves performance if you want to move a lot of tools at the same time.
-        For big graphs and loops this is preferred over `set_pos` and `get_pos`.
+        This function improves performance if you want to move a lot of tools
+        at the same time. For big graphs and loops this is preferred over
+        `set_pos` and `get_pos`.
 
         Added in Fusion 6.1: FlowView::FlushSetPosQueue()
+
+        Returns:
+            None
+
         """
         return self._reference.FlushSetPosQueue()
 
     def get_scale(self):
-        """ Return the current scale of the FlowView.
+        """Returns the current scale of the FlowView.
 
-        :return: This function returns a numeric value indicating the current scale of the FlowView.
-        :rtype: float
+        Returns:
+            float: value indicating the current scale of the FlowView.
+
         """
         return self._reference.GetScale()
 
@@ -1083,27 +1114,41 @@ class Flow(PyObject):
         A value of 1 for the scale argument would set the FlowView to 100%.
         While a value of 0.1 would set it to 10% of the default scale.
 
-        :type scale: float
+        Args:
+            scale (float): The scaling to apply to this FlowView.
+
         """
         return self._reference.SetScale(scale)
 
     def frame_all(self):
-        """ This function will rescale and reposition the FlowView to contain all tools. """
+        """Frames all tools so they fit in the view.
+
+        This function will rescale and reposition the FlowView to contain all
+        tools.
+
+        Returns:
+            None
+
+        """
         self._reference.FrameAll()
 
     def select(self, tool=None, state=True):
-        """ Select or deselect tools or clear the selection in this Flow.
+        """Select, deselect or clear the selection of Tools in this Flow.
 
-        This function will add or remove the tool specified in it's first argument from the current tool selection set.
-        The second argument should be set to False to remove the tool from the selection, or to True to add it.
-        If called with no arguments, the function will clear all tools from the current selection.
+        This function will add or remove the tool specified in it's first
+        argument from the current tool selection set. The second argument
+        should be set to False to remove the tool from the selection, or to
+        True to add it. If called with no arguments, the function will clear
+        all tools from the current selection.
 
-        :param tool:
-        :type tool: Tool
-        :param state: Setting this argument to false will deselect the tool specified in the first argument. O
-                      Otherwise the default value of true is used, which selects the tool.
-        :type state: bool
-        :return: This function does not return a value.
+        Args:
+            tool (Tool): The tool to add or remove.
+            state (bool): When False the tools will be removed from selection,
+                otherwise the tools will ba added to the current selection.
+
+        Returns:
+            None
+
         """
         if tool is None:
             return self._reference.Select() # clear selection
@@ -1114,7 +1159,7 @@ class Flow(PyObject):
 
 
 class Link(PyObject):
-    """ The Link is the base class for Fusion's Input and Output types. """
+    """The Link is the base class for Fusion's Input and Output types"""
 
     def tool(self):
         """ Return the Tool this Link belongs to """
@@ -1158,6 +1203,15 @@ class Input(Link):
 
     def set_value(self, value, time=None):
         """Set the value of the input at the given time.
+
+        When an attribute is an enum type it will try to perform a correct
+        conversion when the Input requires a float value and a string was
+        given. Similarly when a float was given and a string id would be
+        required it will peform a correct conversion.
+
+        This also allows settings checkboxes and alike using a boolean value
+        instead of requiring an integer or float input value. (This will
+        convert it as required by the input.)
 
         Arguments:
             time (float): The time to set the value at. If None provided the
@@ -1321,21 +1375,33 @@ class Input(Link):
 
 
 class Output(Link):
-    """ An Output is any attributes that is a result from a Tool that can be connected as input to another Tool.
+    """Output of a Tool.
+
+    An Output is any attributes that is a result from a Tool that can be
+    connected as input to another Tool.
 
     .. note:: These are the output knobs in the Flow view.
+
     """
+
     def get_value(self, time=None):
-        """ Get the value of this Output at the given time.
+        """Return the value of this Output at the given time.
 
-            If time is provided the value is evaluated at that specific time, otherwise current time is used.
+        If time is provided the value is evaluated at that specific time,
+        otherwise current time is used.
 
-        :param time: Time at which to evaluate the Output. If none provided current time will be used.
+        Args:
+            time (float): Time at which to evaluate the Output.
+                If None provided current time will be used.
+
+        Returns:
+            The value of the output at the given time.
+
         """
         return self.get_value_attrs(time=time)[0]
 
     def get_value_attrs(self, time=None):
-        """ Return a tuple of value and attrs for this Output.
+        """Returns a tuple of value and attrs for this Output.
 
          `value` may be None, or a variety of different types:
 
@@ -1349,13 +1415,19 @@ class Output(Link):
 
             Valid 	- table with numeric Start and End entries
             DataType 	- string ID for the parameter type
-            TimeCost 	- time take to render this parameter
+            TimeCost 	- time taken to render this parameter
 
-        :param time: Time at which to evaluate the Output. If none provided current time will be used.
-        :return: value and attributes of this output at the given time.
+        Args:
+            time (float): Time at which to evaluate the Output.
+                If None provided current time will be used.
+
+        Returns:
+            tuple: Value and attributes of this output at the given time.
+
         """
         if time is None:
-            time = self._reference.GetTool().Composition.CurrentTime # optimize over going through PyNodes (??)
+            # optimize over going through PyNodes (??)
+            time = self._reference.GetTool().Composition.CurrentTime
             # time = self.tool().comp().get_current_time()
 
         return self._reference.GetValue(time)
@@ -1363,16 +1435,27 @@ class Output(Link):
     def get_time_cost(self, time=None):
         """ Return the time taken to render this parameter at the given time.
 
-        .. note:: This will evaluate the output and could be computationally expensive.
+        .. note:: This will evaluate the output and could be computationally
+            expensive.
 
-        :param time: Time at which to evaluate the Output. If none provided current time will be used.
-        :return: Time taken to render this Output.
-        :rtype: float
+        Args:
+            time (float): Time at which to evaluate the Output.
+                If None provided current time will be used.
+
+        Returns:
+            float: Time taken to render this Output.
+
         """
         return self.get_value_attrs(time=time)[1]['TimeCost']
 
     def disconnect(self, inputs=None):
-        """ Disconnect all the Inputs this Output is connected to (or only those given as Inputs). """
+        """Disconnect Inputs this Output is connected to.
+
+        Args:
+            inputs (list or None): The inputs to disconnet or all of the
+                current connections if None is provided.
+
+        """
 
         if inputs is None:      # disconnect all (if any)
             inputs = self.get_connected_inputs()
@@ -1400,24 +1483,32 @@ class Output(Link):
         return [Input(x) for x in self._reference.GetConnectedInputs().values()]
 
     def get_dod(self):
-        """ Return the Domain of Definition for this output.
+        """Returns the Domain of Definition for this output.
 
-        :return: The domain of definition for this output in the as list of integers ordered: left, bottom, right, top.
-        :rtype: [int, int, int, int]
+        Returns:
+            [int, int, int, int]: The domain of definition for this output in
+                the as list of integers ordered: left, bottom, right, top.
         """
         return self._reference.GetDoD()
 
     # region connections
     def connect_to(self, input):
-        """ Connect this Output to another Input gaining an outgoing connection for this tool.
+        """Connect this Output to another Input.
 
-        .. note:: This function behaves similarly to right clicking on a property, selecting Connect To, and selecting
-                  the property you wish to connect the input to. In that respect, if you try to connect non-similar
-                  data types (a path's value to a polygon's level, for instance) it will not connect the values.
-                  Such an action will yield NO error message.
+         This connection gains an outgoing connection for this tool.
 
-        :param input: The Input to connect to.
-        :type input: Input
+        .. note::
+            This function behaves similarly to right clicking on a
+            property, selecting Connect To, and selecting
+            the property you wish to connect the input to. In that
+            respect, if you try to connect non-similar
+            data types (a path's value to a polygon's level,
+            for instance) it will not connect the values.
+            Such an action will yield NO error message.
+
+        Args:
+            input (Input): The input to connect to.
+
         """
         if not isinstance(input, Input):
             input = Input(input)
@@ -1425,18 +1516,21 @@ class Output(Link):
         input.connect_to(self)
 
     def is_connected(self):
-        """ Return whether the Output has any outgoing connection to any Inputs.
+        """Return whether the Output has any outgoing connection to any Inputs.
 
-        :return: True if connected, otherwise False
-        :rtype: bool
+        Returns:
+            bool: True if connected, otherwise False
+
         """
         return any(self._reference.GetConnectedInputs().values())
 
     def data_type(self):
-        """ Returns the type of Parameter (e.g. Number, Point, Text, Image) this Output accepts.
+        """Returns the type of Parameter (e.g. Number, Point, Text, Image)
+        this Output accepts.
 
-        :return: Type of parameter.
-        :rtype: str
+        Returns:
+            str: Type of parameter.
+
         """
         return self._reference.GetAttrs()['INPS_DataType']
 
@@ -1499,26 +1593,34 @@ class Image(Parameter):
         return self._reference.YScale
 
     def x_offset(self):
-        """
-        :return: X Offset, in pixels
+        """Returns x-offset in pixels
+
+        Returns:
+            int: X Offset, in pixels
         """
         return self._reference.XOffset
 
     def y_offset(self):
-        """
-        :return: Y Offset, in pixels
+        """Returns y-offset in pixels
+
+        Returns:
+             int: Y Offset, in pixels
         """
         return self._reference.YOffset
 
     def field(self):
-        """
-        :return: Field indicator
+        """Returns field indicator.
+
+        Returns:
+             int: Field indicator
         """
         return self._reference.Field
 
     def proxy_scale(self):
-        """
-        :return: Image proxy scale multiplier.
+        """Returns image proxy scale multiplier.
+
+        Returns:
+             float: Image proxy scale multiplier.
         """
         return self._reference.ProxyScale
 
