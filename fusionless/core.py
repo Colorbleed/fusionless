@@ -176,50 +176,62 @@ class PyObject(object):
     def get_data(self, name):
         """ Get persistent data from this object.
 
-        :param name: This is the name of the attribute to fetch.
-        :return: The value fetched from the object's persistent data. It can be of almost any type.
+        Args:
+            name (str): The name of the attribute to fetch.
+
+        Returns:
+            The value fetched from the object's persistent data.
+            It can be of almost any type.
+
         """
         return self._reference.GetData(name)
 
     def name(self):
-        """ The internal Fusion Name as string of the node this PyObject references.
+        """The internal Fusion Name as string of the node this PyObject
+        references.
 
-        :return: A string value containing the internal Name of this node.
-        :rtype: str
+        Returns:
+            str: A string value containing the internal Name of this node.
+
         """
         return self._reference.Name
 
     def get_help(self):
-        """ Returns a formatted string of internal help information to Fusion.
+        """Returns a formatted string of internal help information to Fusion.
 
-        :return: internal Fusion information
-        :rtype: str
+        Returns:
+            str: internal Fusion information
+
         """
         return self._reference.GetHelp()
 
     def get_reg(self):
         """ Returns the related Registry instance for this PyObject.
 
-        :return: The registry related to this object.
-        :rtype: Registry
+        Returns:
+            Registry: The registry related to this object.
+
         """
         return self._reference.GetReg()
 
     def id(self):
-        """ The internal Fusion ID as string of the node this PyObject references.
+        """Returns the internal Fusion ID as string.
 
-        .. note:: This uses the internal `GetID()` method on the `Object` instance.
+        .. note:: This uses the internal `GetID()` method on the object
+            instance that this PyObject references.
 
-        :return: A string value containing the internal ID of this node.
-        :rtype: str
+        Returns:
+            str: Internal ID of the referenced Fusion object
+
         """
         return self._reference.GetID()
 
     def comp(self):
         """ Return the Comp this instance belongs to.
 
-        :return: Comp of this instance
-        :rtype: Comp
+        Returns:
+            Comp: The composition from this instance.
+
         """
         return Comp(self._reference.Comp())
 
@@ -271,24 +283,29 @@ class Comp(PyObject):
     def get_tool_list(self, selected=False, node_type=None):
         """ Returns the tool list of this composition.
 
-        :param selected: If True only selected Tools will be returned, otherwise all the Tools in the composition will
-                         be used.
-        :param node_type: If provided filter to only tools of this type.
+        Args:
+            selected (bool): Whether to return only tools from the current
+                selection. When False all tools in the composition will be
+                considered.
+            node_type (str): If provided filter to only tools of this type.
 
-        :return: List of Tools
-        :rtype: list
+        Returns:
+            list: A list of Tool instances
+
         """
         args = (node_type,) if node_type is not None else tuple()
         return [Tool(x) for x in self._reference.GetToolList(selected, *args).values()]
 
     def get_selected_tools(self, node_type=None):
-        """ Returns the currently selected tools.
+        """Returns the currently selected tools.
 
         .. warning::
-            Fusion does NOT return the selected tool list in the order of selection!
+            Fusion does NOT return the selected tool list in the order of
+            selection!
 
-        :return: List of selected Tools
-        :rtype: list
+        Returns:
+            list: A list of selected Tool instances
+
         """
         return self.get_tool_list(True, node_type=node_type)
 
@@ -299,15 +316,18 @@ class Comp(PyObject):
             This does not return the current time, but a UI element.
             To get the current time use `get_current_time()`
 
-        :return: The currently active ChildFrame for this Composition.
+        Returns:
+            The currently active ChildFrame for this Composition.
+
         """
         return self.CurrentFrame
 
     def get_active_tool(self):
         """ Return active tool.
 
-        :return: Currently active tool on this comp
-        :rtype: Tool or None
+        Returns:
+            Tool or None: Currently active tool on this comp
+
         """
         tool = self._reference.ActiveTool
         return Tool(tool) if tool else None
@@ -317,7 +337,13 @@ class Comp(PyObject):
 
         If tool is None it ensure nothing is active.
 
-        :param tool: The tool instance to make active. If None provided active tool will be deselected.
+        Args:
+            tool (Tool): The tool instance to make active.
+                If None provided active tool will be deselected.
+
+        Returns:
+            None
+
         """
         if tool is None:    # deselect if None
             self._reference.SetActiveTool(None)
@@ -331,17 +357,17 @@ class Comp(PyObject):
     def create_tool(self, node_type, attrs=None, insert=False, name=None):
         """ Creates a new node in the composition based on the node type.
 
-        :param node_type: The type id of the node to create.
-        :type node_type: str
-        :param attrs: A dictionary of input values to set.
-        :type attrs: dict
-        :param insert: If True the node gets created and automatically inserted/connected to the active tool.
-        :type insert: bool
-        :param name: If name provided the created node is automatically renamed to the provided name.
-        :type name: str
+        Args:
+            node_type (str): The type id of the node to create.
+            attrs (dict): A dictionary of input values to set.
+            insert (bool): When True the node gets created and automatically
+                inserted/connected to the active tool.
+            name (str): When provided the created node is automatically
+                renamed to the provided name.
 
-        :return: The created Tool instance.
-        :rtype: Tool
+        Returns:
+            Tool: The created Tool instance.
+
         """
 
         # Fusion internally uses the magic 'position' (-32768, -32768) to trigger an automatic connection and insert
@@ -358,96 +384,130 @@ class Comp(PyObject):
         return tool
 
     def copy(self, tools):
-        """ Copy a list of tools to the Clipboard.
+        """Copy a list of tools to the Clipboard.
 
-        The copied Tools can be pasted into the Composition by using its corresponding `paste` method.
+        The copied Tools can be pasted into the Composition by using its
+        corresponding `paste` method.
 
-        :param tools: The Tools list to be copied to the clipboard
+        Args:
+            tools (list): The Tools list to be copied to the clipboard
+
         """
         return self._reference.Copy([tool._reference for tool in tools])
 
     def paste(self, settings=None):
-        """ Pastes a tool from the Clipboard or a settings table.
+        """Pastes a tool from the Clipboard or a settings table.
 
-        :param settings: If values provided it will be used as the settings table to be copied, instead of using the
-                       Comp's current clipboard.
+        Args:
+            settings (dict or None): If settings dictionary provided it will be
+                used as the settings table to be copied, instead of using the
+                Comp's current clipboard.
+
+        Returns:
+            None
+
         """
         args = tuple() if settings is None else (settings,)
         return self._reference.Paste(*args)
 
     def lock(self):
-        """ Sets the composition to a locked state.
+        """Sets the composition to a locked state.
 
         Sets a composition to non-interactive ("batch", or locked) mode.
-        This makes Fusion suppress any dialog boxes which may appear, and additionally prevents any re-rendering in
-        response to changes to the controls. A locked composition can be unlocked with the unlock() function, which
-        returns the composition to interactive mode.
+        This makes Fusion suppress any dialog boxes which may appear, and
+        additionally prevents any re-rendering in response to changes to the
+        controls. A locked composition can be unlocked with the unlock()
+        function, which returns the composition to interactive mode.
 
-        It is often useful to surround a script with Lock() and Unlock(), especially when adding tools or modifying a
-        composition. Doing this ensures Fusion won't pop up a dialog to ask for user input, e.g. when adding a Loader,
-        and can also speed up the operation of the script since no time will be spent rendering until the comp is
-        unlocked.
+        It is often useful to surround a script with Lock() and Unlock(),
+        especially when adding tools or modifying a composition. Doing this
+        ensures Fusion won't pop up a dialog to ask for user input, e.g. when
+        adding a Loader, and can also speed up the operation of the script
+        since no time will be spent rendering until the comp is unlocked.
 
-        For convenience this is also available as a Context Manager as `fusionscript.context.LockComp`.
+        For convenience this is also available as a Context Manager as
+        `fusionscript.context.LockComp`.
+
         """
         self._reference.Lock()
 
     def unlock(self):
-        """ Sets the composition to an unlocked state. """
+        """Sets the composition to an unlocked state."""
         self._reference.Unlock()
 
     def redo(self, num=1):
-        """ Redo one or more changes to the composition.
+        """Redo one or more changes to the composition.
 
-        :param num: Amount of changes to redo.
-        :type num: int
+        Args:
+            num (int): Amount of redo changes to perform.
+
         """
         self._reference.Redo(num)
 
     def undo(self, num):
         """ Undo one or more changes to the composition.
 
-        :param num: Amount of changes to undo.
-        :type num: int
+        Args:
+            num (int): Amount of undo changes to perform.
+
         """
         self._reference.Undo(num)
 
     def start_undo(self, name):
-        """
-        The StartUndo() function is always paired with an EndUndo() function.
-        Any changes made to the composition by the lines of script between StartUndo() and EndUndo() are stored as a
-        single Undo event.
+        """Start an undo block.
 
-        Changes captured in the undo event can be undone from the GUI using CTRL-Z, or the Edit menu.
-        They can also be undone from script, by calling the `undo()` method.
+        This should always be paired with an end_undo call.
+
+        The StartUndo() function is always paired with an EndUndo() function.
+        Any changes made to the composition by the lines of script between
+        StartUndo() and EndUndo() are stored as a single Undo event.
+
+        Changes captured in the undo event can be undone from the GUI using
+        CTRL-Z, or the Edit menu. They can also be undone from script, by
+        calling the `undo()` method.
 
         .. note::
-            If the script exits before `end_undo()` is called Fusion will automatically close the undo event.
+            If the script exits before `end_undo()` is called Fusion will
+            automatically close the undo event.
 
-        :param name: specifies the name displayed in the Edit/Undo menu of the Fusion GUI a string containing the
-                     complete path and name of the composition to be saved.
-        :type name: str
+        Args:
+            name (str): Specifies the name displayed in the Edit/Undo menu of
+                the Fusion GUI a string containing the complete path and name
+                of the composition to be saved.
+
         """
         self._reference.StartUndo(name)
 
     def end_undo(self, keep=True):
-        """
+        """Close an undo block.
+
+        This should always be paired with a start_undo call.
+
         The `start_undo()` is always paired with an `end_undo()` call.
-        Any changes made to the composition by the lines of script between `start_undo()` and `end_undo()` are stored as
-        a single Undo event.
+        Any changes made to the composition by the lines of script between
+        `start_undo()` and `end_undo()` are stored as a single Undo event.
 
-        Changes captured in the undo event can be undone from the GUI using CTRL-Z, or the Edit menu.
-        They can also be undone from script, by calling the `undo()` method.
+        Changes captured in the undo event can be undone from the GUI using
+        CTRL-Z, or the Edit menu. They can also be undone from script, by
+        calling the `undo()` method.
 
-        Specifying 'True' results in the undo event being added to the undo stack, and appearing in the appropriate
-        menu. Specifying False' will result in no undo event being created. This should be used sparingly, as the user
-        (or script) will have no way to undo the preceding commands.
+        Specifying 'True' results in the undo event being added to the undo
+        stack, and appearing in the appropriate menu. Specifying False' will
+        result in no undo event being created. This should be used sparingly,
+        as the user (or script) will have no way to undo the preceding
+        commands.
 
         .. note::
-            If the script exits before `end_undo()` is called Fusion will automatically close the undo event.
+            If the script exits before `end_undo()` is called Fusion will
+            automatically close the undo event.
 
-        :param keep: Determines whether the captured undo event is to kept or discarded.
-        :type keep: bool
+        Args:
+            keep (bool): Determines whether the captured undo event is to kept
+                or discarded.
+
+        Returns:
+            None
+
         """
         self._reference.EndUndo(keep)
 
