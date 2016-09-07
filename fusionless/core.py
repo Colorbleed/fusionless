@@ -211,6 +211,18 @@ class PyObject(object):
         """
         return self._reference.Name
 
+    def id(self):
+        """Returns the ID key as string.
+
+        For example the id label of an Input is used to retrieve it from the
+        Tool.
+
+        Returns:
+            str: Internal ID of the referenced Fusion object
+
+        """
+        return self._reference.ID
+
     def get_help(self):
         """Returns a formatted string of internal help information to Fusion.
 
@@ -229,7 +241,7 @@ class PyObject(object):
         """
         return self._reference.GetReg()
 
-    def id(self):
+    def get_id(self):
         """Returns the internal Fusion ID as string.
 
         .. note:: This uses the internal `GetID()` method on the object
