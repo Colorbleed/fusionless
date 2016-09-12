@@ -296,8 +296,36 @@ class Comp(PyObject):
     @staticmethod
     def _default_reference():
         """Fallback for the default reference"""
-        # this would be accessible within Fusion as "comp"
-        return getattr(sys.modules["__main__"], "comp", None)
+
+        # this would be accessible within Fusion scripts as "comp"
+        ref = getattr(sys.modules["__main__"], "comp", None)
+        if ref is not None:
+            return ref
+
+        # this would be accessible within Fusion's console and is not always
+        # present in the locals() or globals(). It's seems to be magically get
+        # served up when requested. So we try it get it served.
+        # Note: this doesn't seem to work in Fusion 8+ but worked in older
+        #       versions
+        try:
+            return comp
+        except NameError:
+            pass
+
+        # this would be accessible within Fusion's console (if in globals)
+        # haven't seen this happen yet.
+        ref = globals().get("comp", None)
+        if ref is not None:
+            return ref
+
+        # if the above fails we can try to find an active "fusion" and get
+        # the currently active composition (fallback method)
+        try:
+            fusion = Fusion()
+            comp = fusion.get_current_comp()
+            return comp._reference
+        except RuntimeError:
+            pass
 
     def get_current_time(self):
         """ Returns the current time in this composition.
@@ -1654,8 +1682,15 @@ class Fusion(PyObject):
     def _default_reference():
         """Fallback for the default reference"""
 
-        # this would be accessible within Fusion as "fusion"
-        return getattr(sys.modules["__main__"], "fusion", None)
+        # this would be accessible within Fusion as "fusion" in a script
+        ref = getattr(sys.modules["__main__"], "fusion", None)
+        if ref is not None:
+            return ref
+
+        # this would be accessible within Fusion's console
+        ref = globals().get("fusion", None)
+        if ref is not None:
+            return ref
 
     def new_comp(self):
         """Creates a new composition and sets it as the currently active one"""
