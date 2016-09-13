@@ -1729,6 +1729,148 @@ class Fusion(PyObject):
                                    str(self._reference))
 
 
+class AskUserDialog(object):
+    """Dialog to ask users a question through a prompt gui.
+
+    Example
+        >>> dialog = AskUserDialog("Question")
+        >>> dialog.add_message("Simple message")
+        >>> dialog.add_position("Center", default=(0.2, 0.8))
+        >>> dialog.add_position("Size")
+        >>> result = dialog.show()
+
+    """
+
+    # Conversion from nice name attributes to Fusion named attributes
+    CONVERSION = {
+        "name": "Name",             # (str) All controls
+        "default": "Default",       # (numeric) Checkbox, Dropdown, Multibutton
+        "options": "Options",       # (dict) Options table
+        "linear": "Linear",         # (int) Text
+        "wrap": "Wrap",             # (bool) Text
+        "read_only": "ReadOnly",    # (bool) Text
+        "font_name": "FontName",    # (str) Text
+        "font_size": "FontSize",    # (float) Text
+        "save": "Save",             # (bool) FileBrowse, PathBrowse, ClipBrowse
+        "min": "Min",               # (numeric) Numeric controls
+        "max": "Max",               # (numeric) Numeric controls
+        "low_name": "LowName",      # (str) Slider
+        "high_name": "HighName",    # (str) Slider
+        "num_across": "NumAcross"   # (int) Checkbox
+    }
+
+    def __init__(self, title=""):
+        self._items = list()
+        self.title = title
+
+    def set_title(self, title):
+        self.title = title
+
+    def _add(self,
+             type,
+             label,
+             **kwargs):
+        """Utility method for adding any type of control to the dialog"""
+
+        item = {
+            1: label,
+            2: type
+        }
+
+        # Add the optional keys (kwargs) and convert to the original Fusion
+        # names for the variables
+        for key, value in kwargs.items():
+            if key in self.CONVERSION:
+                item[self.CONVERSION[key]] = value
+            else:
+                raise TypeError("Invalid argument for a Dialog control: "
+                                "{0}".format(key))
+
+        self._items.append(item)
+
+    def add_text(self, label, **kwargs):
+        self._add("Text", label, **kwargs)
+
+    def add_file_browse(self, label, **kwargs):
+        self._add("FileBrowse", label, **kwargs)
+
+    def add_path_browse(self, label, **kwargs):
+        self._add("PathBrowse", label, **kwargs)
+
+    def add_clip_browse(self, label, **kwargs):
+        self._add("ClipBrowse", label, **kwargs)
+
+    def add_slider(self, label, **kwargs):
+        self._add("Slider", label, **kwargs)
+
+    def add_checkbox(self, label, **kwargs):
+        self._add("Checkbox", label, **kwargs)
+
+    def add_position(self, label, **kwargs):
+        """Add a X & Y coordinaties control
+
+        Displays a pair of edit boxes used to enter X & Y coordinates
+        for a center control or other position value. The default value
+        of this control is a table with two values, one for the X value and
+        one for the Y. The control returns a table of values.
+
+        """
+
+        if "default" in kwargs:
+            default = kwargs["default"]
+
+            # A tuple does not work as a default value for a position control
+            # so we convert it to a list to fix it.
+            if isinstance(default, tuple):
+                kwargs["default"] = list(default)
+
+        self._add("Position", label, **kwargs)
+
+    def add_screw(self, label, **kwargs):
+        """Add the standard Fusion thumbnail or screw control.
+
+        This control is almost identical to a slider in almost all respects
+        except that its range is infinite, and so it is well suited for
+        angle controls and other values without practical limits.
+
+        """
+        self._add("Screw", label, **kwargs)
+
+    def add_dropdown(self, label, **kwargs):
+        """Add a dropdown combobox.
+
+        Displays the standard Fusion drop down menu for selecting from a
+        list of options. This control exposes and option call Options,
+        which takes a table containing the values for the drop down menu.
+        Note that the index for the Options table starts at 0, not 1 like is
+        common in most FusionScript tables. So, if you wish to set a default
+        for the first entry in a list, you would use Default=0, for the
+        second Default=1, and so on.
+
+        """
+        self._add("Dropdown", label, **kwargs)
+
+    def add_multibutton(self, label, **kwargs):
+        """Add a multibutton.
+
+        Displays a Multibutton, where each option is drawn as a button.
+        The same options are used like in a Dropdown.
+
+        A set of buttons acting like a combobox (choice).
+
+        """
+        self._add("Multibutton", label, **kwargs)
+
+    def show(self):
+        """Show the dialog
+
+        Returns:
+            dict: The state of the controls in the UI
+        """
+        data = dict((i, value) for i, value in enumerate(self._items))
+        return Comp()._reference.AskUser(self.title, data)
+
+
 class Registry(PyObject):
     """Represents a Registry type of object within Fusion"""
     pass
