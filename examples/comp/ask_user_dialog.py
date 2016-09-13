@@ -2,7 +2,7 @@
 
 import fusionless as fu
 
-dialog = fu.AskUserDialog()
+dialog = fu.AskUserDialog("Example Ask User Dialog")
 dialog.add_text("text", default="Default text value")
 dialog.add_position("position", default=(0.2, 0.8))
 dialog.add_slider("slider", default=0.5, min=-10, max=10)
