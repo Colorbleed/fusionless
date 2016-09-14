@@ -1828,6 +1828,10 @@ class AskUserDialog(object):
     CONVERSION = {
         "name": "Name",             # (str) All controls
         "default": "Default",       # (numeric) Checkbox, Dropdown, Multibutton
+        "min": "Min",               # (numeric) Numeric controls
+        "max": "Max",               # (numeric) Numeric controls
+        "precision": "DisplayedPrecision",  # (int) Numeric controls
+        "integer": "Integer",        # (bool) Numeric controls
         "options": "Options",       # (dict) Options table
         "linear": "Linear",         # (int) Text
         "wrap": "Wrap",             # (bool) Text
@@ -1835,8 +1839,6 @@ class AskUserDialog(object):
         "font_name": "FontName",    # (str) Text
         "font_size": "FontSize",    # (float) Text
         "save": "Save",             # (bool) FileBrowse, PathBrowse, ClipBrowse
-        "min": "Min",               # (numeric) Numeric controls
-        "max": "Max",               # (numeric) Numeric controls
         "low_name": "LowName",      # (str) Slider
         "high_name": "HighName",    # (str) Slider
         "num_across": "NumAcross"   # (int) Checkbox
