@@ -591,11 +591,10 @@ class Comp(PyObject):
 
         """
 
-        if filename is None:
-            if not self.filename():
-                # When not saved yet we raise an error instead of
-                # silently failing without explanation
-                raise ValueError("Can't save comp without filename.")
+        if filename is None and not self.filename():
+            # When not saved yet we raise an error instead of
+            # silently failing without explanation
+            raise ValueError("Can't save comp without filename.")
 
         return self._reference.Save(filename)
 
@@ -742,8 +741,10 @@ class Comp(PyObject):
         Since version 6.3.2 you can run Python and eyeonScripts.
         Fusion supports .py .py2 and .py3 extensions to differentiate python script versions.
 
-        :param filename: The filename of a script to be run in the composition environment.
-        :type filename: str
+        Arguments:
+            filename (str): The filename of a script to be run in the
+                composition environment.
+
         """
         self._reference.RunScript(filename)
 
@@ -753,7 +754,9 @@ class Comp(PyObject):
         Use this method to determine whether a composition object is currently rendering.
         It will return True if it is playing, rendering, or just rendering a tool after trying to view it.
 
-        :rtype: bool
+        Returns:
+            bool: Whether composition is currently rendering
+
         """
         return self._reference.IsRendering()
 
@@ -764,6 +767,7 @@ class Comp(PyObject):
 
         Returns:
              bool: Whether comp is currently being played.
+
         """
         return self._reference.IsPlaying()
 
@@ -774,6 +778,7 @@ class Comp(PyObject):
 
         Returns:
              bool: Whether comp is currently locked.
+
         """
         return self._reference.IsPlaying()
 
@@ -791,27 +796,34 @@ class Comp(PyObject):
 
 
 class Tool(PyObject):
-    """ A Tool is a single operator/node in your composition.
+    """A Tool is a single operator/node in your composition.
 
-    You can use this object to perform changes to a single tool (or make connections with another) or query information.
-    For example renaming, deleting, connecting and retrieving its inputs/outputs.
+    You can use this object to perform changes to a single tool, make
+    connections with another or query information. For example renaming,
+    deleting, connecting and retrieving its inputs/outputs.
+
     """
 
     def get_pos(self):
-        """ This function will return the X and Y position this tool in the FlowView.
+        """Return the X and Y position of this tool in the FlowView.
 
-        :return: This function returns two numeric values containing the X and Y co-ordinates of the tool.
-        :rtype: list(float, float)
+        Returns:
+            list(float, float): The X and Y coordinate of the tool.
+
         """
         flow = self.comp().current_frame().FlowView
         # possible optimization: self._reference.Comp.CurrentFrame.FlowView
         return flow.GetPosTable(self._reference).values()
 
     def set_pos(self, pos):
-        """ Reposition this tool.
+        """Reposition this tool.
 
-        :param pos: Numeric values specifying the x and y co-ordinates for the tool in the FlowView.
-        :type pos: list(float, float)
+        Arguments:
+            pos (list(float, float)):  The X and Y coordinate to apply.
+
+        Returns:
+            None
+
         """
         flow = self.comp().current_frame().FlowView
         # possible optimization: self._reference.Comp.CurrentFrame.FlowView
@@ -819,29 +831,39 @@ class Tool(PyObject):
 
     # region inputs
     def main_input(self, index):
-        """ Returns the main (visible) Input knob of the tool, by index.
+        """Returns the main (visible) Input knob of the tool, by index.
 
-        .. note:: The index starts at 1!
+        Note:
+            The index starts at 1!
 
-        :param index: numerical index of the knob
-        :type index: int
-        :return: Input at the given index.
-        :rtype: Input
+        Arguments:
+            index (int): numerical index of the knob (starts at 1)
+
+        Returns:
+            Input: input that the given index.
+
         """
         return Input(self._reference.FindMainInput(index))
 
     def input(self, id):
-        """ Returns an Input by ID.
+        """Returns an Input by ID.
 
-        :param id: ID of the Input
-        :type id: str
-        :return: Output at the given index.
-        :rtype: Output
+        Arguments:
+            id (str): ID name of the input.
+
+        Returns:
+            Input: input at the given index.
+
         """
         return Input(self._reference[id])
 
     def inputs(self):
-        """ Return all Inputs of this Tools """
+        """Return all Inputs of this Tools
+
+        Returns:
+            list: inputs of the tool.
+
+        """
         return [Input(x) for x in self._reference.GetInputList().values()]
     # endregion
 
@@ -849,24 +871,29 @@ class Tool(PyObject):
     def main_output(self, index):
         """ Returns the main (visible) Output knob of the tool, by index.
 
-        .. note:: The index starts at 1!
+        Note:
+            The index starts at 1!
 
-        :param index: numerical index of the knob
-        :type index: int
-        :return: Output at the given index.
-        :rtype: Output
+        Arguments:
+            index (int): numerical index of the knob (starts at 1)
+
+        Returns:
+            Output: output that the given index.
+
         """
         return Output(self._reference.FindMainOutput(index))
 
     def output(self, id):
         """ Returns the Output knob by ID.
 
-        :param id: ID of the Output.
-        :type id: str
-        :return: Output at the given index.
-        :rtype: Output
+        Arguments:
+            id (str): ID name of the output.
+
+        Returns:
+            Output: The resulting output.
+
         """
-        # TODO: Optimize `Tool.output(id)`, there must be a more optimized way than doing it like this.
+        # TODO: Optimize: there must be a more optimized way than this.
         output_reference = next(x for x in self.outputs() if x.ID == id)
         if not output_reference:
             return None
@@ -880,11 +907,19 @@ class Tool(PyObject):
 
     # region connections
     def connect_main(self, tool, from_index=1, to_index=1):
-        """ Helper function that quickly connects main outputs to another tool's main inputs.
+        """Helper function that quickly connects main outputs to another
+        tool's main inputs.
 
-        :param tool: The other tool to connect to.
-        :param from_index: The index of the main output on thjis tool. (Indices start at 1)
-        :param to_index:  The index of the main input on the other tool. (Indices start at 1)
+        Arguments:
+            tool (Tool): The other tool to connect to.
+            from_index (int): Index of main output on this instance.
+                (index start at 1)
+            to_index (int): Index of main input on the other tool.
+                (index start at 1)
+
+        Returns:
+            None
+
         """
         if not isinstance(tool, Tool):
             tool = Tool(tool)
@@ -893,7 +928,16 @@ class Tool(PyObject):
         tool._reference[id] = self._reference.FindMainOutput(1)     # connect
 
     def disconnect(self, inputs=True, outputs=True):
-        """ Disconnect all inputs and outputs of this tool. """
+        """Disconnect all inputs and outputs of this tool.
+
+        Arguments:
+           inputs (bool): Whether to disconnect all inputs
+           outputs (bool): Whether to disconnect all outputs
+
+        Returns:
+            None
+
+        """
         if inputs:
             for input in self.inputs():
                 input.disconnect()
@@ -903,13 +947,17 @@ class Tool(PyObject):
                 output.disconnect()
 
     def connections_iter(self, inputs=True, outputs=True):
-        """ Yield each Input and Output connection for this Tool instance.
+        """Yield each Input and Output connection for this Tool instance.
 
         Each individual connection is yielded in the format: `(Output, Input)`
 
-        :param inputs: If True include the inputs of this Tool, else they are excluded.
-        :param outputs: If True include the outputs of this Tool, else they are excluded.
-        :yield: (Output, Input) representing a connection to or from this Tool.
+        Arguments:
+           inputs (bool): Whether to include inputs of this Tool instance.
+           outputs (bool): Whether to include outputs of this Tool instance.
+
+        Yields:
+            (Output, Input): representing a connection to or from this Tool.
+
         """
         if inputs:
             for input in self.inputs():
@@ -963,8 +1011,8 @@ class Tool(PyObject):
         """Removes the tool from the composition.
 
         .. note::
-            This also releases the handle to the Fusion Tool object, setting it to nil.
-            This directly invalidates this Tool instance.
+            This also releases the handle to the Fusion Tool object,
+            setting it to None. As such it invalidates this Tool instance.
 
         """
         self._reference.Delete()
@@ -993,13 +1041,14 @@ class Tool(PyObject):
         """Saves the tool's settings to a dict, or to a .setting file
         specified by the path argument.
 
-        :param path: A valid path to the location where a .setting file will be saved.
-        :type path: str
-        :return:
-            If a path is given, the tool's settings will be saved to that file,
-            and a boolean is returned to indicate success.
-            If no path is given, SaveSettings() will return a table of the
-            tool's settings instead.
+        Arguments:
+            path (str): The path to save the .setting file.
+
+        Returns:
+            bool/dict: If a path is given, the tool's settings will be saved
+                to that file, and a boolean is returned to indicate success.
+                If no path is given, SaveSettings() will return a table of the
+                tool's settings instead.
 
         """
         args = tuple() if path is None else (path,)
@@ -1029,10 +1078,11 @@ class Tool(PyObject):
         return Comp(self._reference.Composition)
 
     def get_text_color(self):
-        """ Gets the Tool's text color.
+        """Gets the Tool's text color.
 
-        :rtype: dict
-        :return: The Tool's current text color.
+        Returns:
+            dict: The Tool's current text color.
+
         """
         return self._reference.TextColor
 
@@ -1045,14 +1095,15 @@ class Tool(PyObject):
         Example
             >>> tool.set_text_color({'R':0.5, 'G':0.1, 'B': 0.0})
             >>> tool.set_text_color(None)
+
         """
         self._reference.TextColor = color
 
     def get_tile_color(self):
         """ Gets the Tool's tile color.
 
-        :rtype: dict
-        :return: The Tool's current tile color.
+        Returns:
+            dict: The Tool's current tile color.
         """
         return self._reference.TileColor
 
@@ -1062,6 +1113,7 @@ class Tool(PyObject):
         Example
             >>> tool.set_tile_color({'R':0.5, 'G':0.1, 'B': 0.0})
             >>> tool.set_tile_color(None)   # reset
+
         """
         self._reference.TileColor = color
 
@@ -1097,7 +1149,7 @@ class Tool(PyObject):
 
 
 class Flow(PyObject):
-    """ The Flow is the node-based overview of you Composition.
+    """The Flow is the node-based overview of you Composition.
 
     Fusion's internal name: `FlowView`
 
