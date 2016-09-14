@@ -572,9 +572,33 @@ class Comp(PyObject):
         composition."""
         self._reference.ClearUndo()
 
-    def save(self):
-        """Save the composition."""
-        self._reference.Save()
+    def save(self, filename=None):
+        """Save the composition.
+
+        This function causes the composition to be saved to disk. The compname
+        argument must specify a path relative to the filesystem of the Fusion
+        which is saving the composition. In  other words - if system `a` is
+        using the Save() function to instruct a Fusion on system `b` to save a
+        composition, the path provided must be valid from the perspective of
+        system `b`.
+
+        Arguments:
+            filename (str): Full path to save to. When None it will save over
+                the current comp path (if alreaady available).
+
+        Returns:
+            bool: Whether saving succeeded
+
+        """
+
+        if filename is None:
+            current = self._reference.GetAttrs()['COMPS_FileName']
+            if not current:
+                # When not saved yet we raise an error instead of
+                # silently failing without explanation
+                raise ValueError("Can't save comp without filename.")
+
+        return self._reference.Save(filename)
 
     def play(self):
         """This function is used to turn on the play control in the playback
