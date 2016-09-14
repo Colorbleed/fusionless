@@ -592,8 +592,7 @@ class Comp(PyObject):
         """
 
         if filename is None:
-            current = self._reference.GetAttrs()['COMPS_FileName']
-            if not current:
+            if not self.filename():
                 # When not saved yet we raise an error instead of
                 # silently failing without explanation
                 raise ValueError("Can't save comp without filename.")
@@ -778,9 +777,17 @@ class Comp(PyObject):
         """
         return self._reference.IsPlaying()
 
+    def filename(self):
+        """Return the current file path of the composition.
+
+        Returns:
+            str: Full path to current comp. (empty string if not saved yet)
+
+        """
+        return self._reference.GetAttrs()['COMPS_FileName']
+
     def __repr__(self):
-        filename = self._reference.GetAttrs()['COMPS_FileName']
-        return '{0}("{1}")'.format(self.__class__.__name__, filename)
+        return '{0}("{1}")'.format(self.__class__.__name__, self.filename())
 
 
 class Tool(PyObject):
